@@ -10,13 +10,6 @@ def connect_to_mongodb():
     db = client['financial_data']  # Name of the database
     return db
 
-# Function to calculate the start and end of the current week (Monday to Sunday)
-def get_week_range():
-    today = datetime.today()
-    start_of_week = today - timedelta(days=today.weekday())  # Monday
-    end_of_week = start_of_week + timedelta(days=6)  # Sunday
-    return start_of_week, end_of_week
-
 # Function to add data to the MongoDB collection
 def add_data_to_db(db, date, time, product_id, quantity, price, category):
     new_data = {
@@ -32,15 +25,16 @@ def add_data_to_db(db, date, time, product_id, quantity, price, category):
     db['combined_data'].insert_one(new_data)
     print(f"Inserted data into MongoDB: {new_data}")
 
-# Function to fetch data for the current week from MongoDB
-def fetch_weekly_data(db, category):
-    start_of_week, end_of_week = get_week_range()
+# Function to fetch data for a specific week
+def fetch_data_for_week(db, category, start_of_week):
+    # Calculate the end of the week (7 days from the start of the week)
+    end_of_week = start_of_week + timedelta(days=6)
 
-    # Convert start and end dates to strings in the format YYYY-MM-DD for MongoDB query
+    # Convert the start and end dates to string format YYYY-MM-DD for MongoDB query
     start_date_str = start_of_week.strftime('%Y-%m-%d')
     end_date_str = end_of_week.strftime('%Y-%m-%d')
 
-    # Fetch data within the week for the given category
+    # Fetch data within the specified week for the given category
     data = pd.DataFrame(list(db['combined_data'].find({
         "Category": category,
         "Date": {"$gte": start_date_str, "$lte": end_date_str}
@@ -50,8 +44,20 @@ def fetch_weekly_data(db, category):
     if '_id' in data.columns:
         data = data.drop('_id', axis=1)
 
-    return data
+    # Check if the DataFrame is empty and print a diagnostic message
+    if data.empty:
+        print(f"No data found for category: {category} between {start_date_str} and {end_date_str}")
+    else:
+        print(f"Fetched {len(data)} records for category: {category} between {start_date_str} and {end_date_str}")
+        print("Columns in DataFrame:", data.columns)
 
+    # Convert 'Quantity' and 'Price' to numeric types if the DataFrame is not empty
+    if 'Quantity' in data.columns:
+        data['Quantity'] = pd.to_numeric(data['Quantity'], errors='coerce')
+    if 'Price' in data.columns:
+        data['Price'] = pd.to_numeric(data['Price'], errors='coerce')
+
+    return data
 
 # Unified main function
 def main():
@@ -65,7 +71,7 @@ def main():
         if action == 'exit':
             break
 
-        # Add new data (example usage)
+        # Add new data
         date = input("Enter Date (YYYY-MM-DD): ")
         time = input("Enter Time (HH:MM:SS): ")
         product_id = int(input("Enter Product ID: "))
@@ -76,19 +82,23 @@ def main():
         # Add the data to MongoDB
         add_data_to_db(db, date, time, product_id, quantity, price, category)
 
-    # Define initial capital
-    initial_capital = 10000.0  # Starting capital
+    # Ask the user to specify the start date for the week they want to report on
+    start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
+    start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
 
     # Fetch weekly data from MongoDB
-    transactions = fetch_weekly_data(db, "transaction")
-    sales = fetch_weekly_data(db, "sales")
+    transactions = fetch_data_for_week(db, "transaction", start_of_week)
+    sales = fetch_data_for_week(db, "sales", start_of_week)
+
+    # Define initial capital
+    initial_capital = 10000.0  # Starting capital
 
     # Analyze data fetched from MongoDB
     summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
 
     # Generate report filenames based on the current date (weekly report)
-    pdf_filename = f"weekly_financial_report_{pd.Timestamp.now().strftime('%d_%B_%Y')}.pdf"
-    xsl_filename = f"weekly_financial_report_{pd.Timestamp.now().strftime('%d_%B_%Y')}.xlsx"
+    pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
+    xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
 
     # Generate the PDF report
     generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename)
@@ -100,6 +110,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 # mongod --dbpath /Users/bergasanargya/Asia_Global/mongodb_data
 # laporan mingguan, bulanan, tahunan
