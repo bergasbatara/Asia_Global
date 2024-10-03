@@ -1,17 +1,5 @@
 import pandas as pd #type: ignore
 
-# Load transaction history of purchases
-# def load_transaction_history(filepath):
-#     df = pd.read_csv(filepath)
-#     df['Date_Time'] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
-#     return df.drop(columns=['Date', 'Time'])
-
-# # Load sales history of vendor's own products
-# def load_sales_history(filepath):
-#     df = pd.read_csv(filepath)
-#     df['Date_Time'] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
-#     return df.drop(columns=['Date', 'Time'])
-
 def analyze_data(transactions, sales, initial_capital=0.0):
     # Create explicit copies to avoid the SettingWithCopyWarning
     transactions = transactions.copy()

@@ -59,6 +59,21 @@ def fetch_data_for_week(db, category, start_of_week):
 
     return data
 
+# New function to fetch data for the entire year
+def fetch_data_for_year(db, category, year):
+    all_data = pd.DataFrame()
+
+    # Loop through all 52 weeks of the year
+    for week_num in range(52):
+        start_of_week = datetime(year, 1, 1) + timedelta(weeks=week_num)
+        weekly_data = fetch_data_for_week(db, category, start_of_week)
+        
+        # Append weekly data to the yearly data
+        all_data = pd.concat([all_data, weekly_data], ignore_index=True)
+
+    return all_data
+
+
 # Unified main function
 def main():
     # Connect to MongoDB
@@ -82,13 +97,23 @@ def main():
         # Add the data to MongoDB
         add_data_to_db(db, date, time, product_id, quantity, price, category)
 
-    # Ask the user to specify the start date for the week they want to report on
-    start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
-    start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
+    # Choosing between 
+    choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)?").lower()
 
-    # Fetch weekly data from MongoDB
-    transactions = fetch_data_for_week(db, "transaction", start_of_week)
-    sales = fetch_data_for_week(db, "sales", start_of_week)
+    language_input = input("What language? (E for English, I for Indonesian)").lower()
+
+    if (choice_weekly_yearly == 'weekly'):
+        # Ask the user to specify the start date for the week they want to report on
+        start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
+        start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
+
+        # Fetch weekly data from MongoDB
+        transactions = fetch_data_for_week(db, "transaction", start_of_week)
+        sales = fetch_data_for_week(db, "sales", start_of_week)
+    
+    elif (choice_weekly_yearly == 'yearly'):
+        # Ask the user to specify the start date for the year they want to report on
+        start_of_year = input()
 
     # Define initial capital
     initial_capital = 10000.0  # Starting capital
@@ -101,11 +126,11 @@ def main():
     xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
 
     # Generate the PDF report
-    generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename)
+    generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input)
     print(f"PDF report has been saved to {pdf_filename}")
 
     # Export to Excel
-    export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename)
+    export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
     print(f"Excel report has been saved to {xsl_filename}")
 
 if __name__ == "__main__":
