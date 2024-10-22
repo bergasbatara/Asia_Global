@@ -59,13 +59,15 @@ def fetch_data_for_week(db, category, start_of_week):
 
     return data
 
-# New function to fetch data for the entire year
 def fetch_data_for_year(db, category, year):
     all_data = pd.DataFrame()
 
+    # Make sure the year is passed correctly as an integer
+    start_of_year = datetime(year, 1, 1)
+
     # Loop through all 52 weeks of the year
     for week_num in range(52):
-        start_of_week = datetime(year, 1, 1) + timedelta(weeks=week_num)
+        start_of_week = start_of_year + timedelta(weeks=week_num)
         weekly_data = fetch_data_for_week(db, category, start_of_week)
         
         # Append weekly data to the yearly data
@@ -98,9 +100,9 @@ def main():
         add_data_to_db(db, date, time, product_id, quantity, price, category)
 
     # Choosing between 
-    choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)?").lower()
+    choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)? ").lower()
 
-    language_input = input("What language? (E for English, I for Indonesian)").lower()
+    language_input = input("What language? (E for English, I for Indonesian) ").lower()
 
     if (choice_weekly_yearly == 'weekly'):
         # Ask the user to specify the start date for the week they want to report on
@@ -110,20 +112,29 @@ def main():
         # Fetch weekly data from MongoDB
         transactions = fetch_data_for_week(db, "transaction", start_of_week)
         sales = fetch_data_for_week(db, "sales", start_of_week)
-    
+
+        # Generate report filenames based on the current date (weekly report)
+        pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
+        xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
+
     elif (choice_weekly_yearly == 'yearly'):
         # Ask the user to specify the start date for the year they want to report on
-        start_of_year = input()
+        start_of_year = int(input("Enter the year for the report? "))
+        # start_of_year_date = datetime(start_of_year, 1, 1)
+
+        # Fetch weekly data from MongoDB
+        transactions = fetch_data_for_year(db, "transaction", start_of_year)
+        sales = fetch_data_for_year(db, "sales", start_of_year)
+
+        # Generate report filenames based on the current date (weekly report)
+        pdf_filename = f"yearly_financial_report_{start_of_year}.pdf"
+        xsl_filename = f"yearly_financial_report_{start_of_year}.xlsx"
 
     # Define initial capital
     initial_capital = 10000.0  # Starting capital
 
     # Analyze data fetched from MongoDB
     summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
-
-    # Generate report filenames based on the current date (weekly report)
-    pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
-    xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
 
     # Generate the PDF report
     generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input)
