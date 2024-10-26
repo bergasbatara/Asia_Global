@@ -1,6 +1,7 @@
 import boto3
 from datetime import datetime, timedelta
 from decimal import Decimal
+import uuid
 from boto3.dynamodb.conditions import Key, Attr
 import pandas as pd
 from analyze import analyze_data
