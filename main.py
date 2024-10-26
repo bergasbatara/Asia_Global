@@ -4,6 +4,7 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key, Attr
 import pandas as pd
 from analyze import analyze_data
+from export import generate_pdf, export_to_excel
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region

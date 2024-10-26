@@ -1,30 +1,44 @@
-import pandas as pd #type: ignore
+def analyze_data(transactions, sales, initial_capital):
+    # Filter transactions data where Category is "transaction"
+    transaction_values = transactions[transactions['Category'] == 'transaction']
+    total_purchase = float(sum(transaction_values['Price'].astype(float) * transaction_values['Quantity'].astype(float)))
 
-def analyze_data(transactions, sales, initial_capital=0.0):
-    # Create explicit copies to avoid the SettingWithCopyWarning
-    transactions = transactions.copy()
-    sales = sales.copy()
+    # Filter sales data where Category is "sales"
+    sales_values = sales[sales['Category'] == 'sales']
+    total_sales = float(sum(sales_values['Price'].astype(float) * sales_values['Quantity'].astype(float)))
 
-    # Safely modify the DataFrame with .loc
-    transactions['Total_Purchase_Amount'] = transactions['Quantity'] * transactions['Price']
-    sales['Total_Sales_Amount'] = sales['Quantity'] * sales['Price']
-    
-    # Calculate overall capital change
-    total_purchase = transactions['Total_Purchase_Amount'].sum()
-    total_sales = sales['Total_Sales_Amount'].sum()
+    # Prepare the summary dictionary with sales amounts per Product_ID
+    sales_summary = {}
+    for _, row in sales_values.iterrows():
+        product_id = row['Product_id']
+        sales_amount = float(row['Price']) * float(row['Quantity'])
+        sales_summary[product_id] = sales_amount
+
+    # Prepare the summary dictionary with transaction amounts per Product_ID
+    transaction_summary = {}
+    for _, row in transaction_values.iterrows():
+        product_id = row['Product_id']
+        transaction_amount = float(row['Price']) * float(row['Quantity'])
+        transaction_summary[product_id] = transaction_amount
+
+    # Calculate financial metrics
     final_capital = initial_capital - total_purchase + total_sales
-    
-    # Prepare summary for report
-    summary = pd.merge(
-        transactions.groupby('Product_ID')['Total_Purchase_Amount'].sum().reset_index(),
-        sales.groupby('Product_ID')['Total_Sales_Amount'].sum().reset_index(),
-        on='Product_ID', how='outer'
-    )
-
-    # Retaining the calculation for net profit, total assets, liabilities, and equity
     net_profit = total_sales - total_purchase
-    total_assets = 40000000  # Example value (customize if needed)
-    total_liabilities = 8000000  # Example value (customize if needed)
+    total_assets = final_capital
+    total_liabilities = 800000 # Assuming no liabilities in this example
     total_equity = total_assets - total_liabilities
+    
+    # Summary dictionary
+    summary = {
+        'sales': sales_summary,
+        'transactions': transaction_summary,
+        'total_sales': total_sales,
+        'total_purchase': total_purchase,
+        'net_profit': net_profit,
+        'final_capital': final_capital,
+        'total_assets': total_assets,
+        'total_liabilities': total_liabilities,
+        'total_equity': total_equity
+    }
 
     return summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity
