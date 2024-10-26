@@ -44,10 +44,10 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
 
         # Table rows
         pdf.set_font('Arial', '', 12)
-        for index, row in summary.iterrows():
+        for product_id, amount in summary['sales'].items():
             pdf.cell(column_widths[0], 10, "Pendapatan Jasa", border=1, ln=0)
-            pdf.cell(column_widths[1], 10, str(int(row['Product_ID'])), border=1, ln=0, align='C')
-            pdf.cell(column_widths[2], 10, f"Rp {row['Total_Sales_Amount']:,.2f}", border=1, ln=0, align='R')
+            pdf.cell(column_widths[1], 10, str(product_id), border=1, ln=0, align='C')
+            pdf.cell(column_widths[2], 10, f"Rp {amount:,.2f}", border=1, ln=0, align='R')
             pdf.ln()
 
         # Total line
@@ -87,10 +87,10 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
 
         # Table rows
         pdf.set_font('Arial', '', 12)
-        for index, row in summary.iterrows():
+        for product_id, amount in summary['sales'].items():
             pdf.cell(column_widths[0], 10, "Service Revenue", border=1, ln=0)
-            pdf.cell(column_widths[1], 10, str(int(row['Product_ID'])), border=1, ln=0, align='C')
-            pdf.cell(column_widths[2], 10, f"Rp {row['Total_Sales_Amount']:,.2f}", border=1, ln=0, align='R')
+            pdf.cell(column_widths[1], 10, str(product_id), border=1, ln=0, align='C')
+            pdf.cell(column_widths[2], 10, f"Rp {amount:,.2f}", border=1, ln=0, align='R')
             pdf.ln()
 
         # Total line
@@ -105,7 +105,7 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
         pdf.cell(190, 10, f"Total Cash Flow: Rp {net_profit:,.2f}", border=1, ln=1, align='L')
         pdf.cell(190, 10, f"Daily Cash Balance: Rp {final_capital:,.2f}", border=1, ln=1, align='L')
 
-        # Aktiva dan Kewajiban Harian
+        # Daily Assets and Liabilities
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(190, 10, "Daily Assets and Liabilities:", ln=1, align='L')
         pdf.set_font('Arial', '', 12)
@@ -118,6 +118,11 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
     pdf.output(filename)
 
 def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language):
+    # Convert summary to a DataFrame if it's not already in the correct format
+    summary_df = pd.DataFrame.from_dict(summary['sales'], orient='index', columns=['Total_Sales_Amount'])
+    summary_df.reset_index(inplace=True)
+    summary_df.rename(columns={'index': 'Product_ID'}, inplace=True)
+
     # Create a workbook and select the active worksheet
     wb = Workbook()
     ws = wb.active
@@ -140,7 +145,7 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
             cell.alignment = Alignment(horizontal="center")
 
         # Append rows from DataFrame
-        for r in dataframe_to_rows(summary, index=False, header=False):
+        for r in dataframe_to_rows(summary_df, index=False, header=False):
             ws.append([f"Jasa {r[0]}", r[0], r[1]])
 
         # Format all rows
@@ -151,7 +156,6 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
 
         # Add Total row
         ws.append(["Total Pendapatan", "", total_sales])
-        # Merge the "Total Pendapatan" cell with the adjacent empty cell
         ws.merge_cells(start_row=ws.max_row, start_column=1, end_row=ws.max_row, end_column=2)
         ws["C" + str(ws.max_row)].number_format = number_format
         ws["C" + str(ws.max_row)].border = border
@@ -187,7 +191,7 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
             cell.alignment = Alignment(horizontal="center")
 
         # Append rows from DataFrame
-        for r in dataframe_to_rows(summary, index=False, header=False):
+        for r in dataframe_to_rows(summary_df, index=False, header=False):
             ws.append([f"Service {r[0]}", r[0], r[1]])
 
         # Format all rows
@@ -198,7 +202,6 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
 
         # Add Total row
         ws.append(["Total Sales", "", total_sales])
-        # Merge the "Total Pendapatan" cell with the adjacent empty cell
         ws.merge_cells(start_row=ws.max_row, start_column=1, end_row=ws.max_row, end_column=2)
         ws["C" + str(ws.max_row)].number_format = number_format
         ws["C" + str(ws.max_row)].border = border
@@ -225,5 +228,6 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
 
     # Save the workbook
     wb.save(filename)
+
     
 
