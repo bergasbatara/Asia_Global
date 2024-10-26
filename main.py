@@ -8,10 +8,10 @@ from analyze import analyze_data
 from export import generate_pdf, export_to_excel
 
 # Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region
+dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region Jakarta
 
-# Replace 'your_table_name' with your DynamoDB table name
-table_name = 'Sample_Data'  # Replace with the correct table name
+# Sample_Data table name
+table_name = 'Sample_Data' 
 table = dynamodb.Table(table_name)
 
 # Function to add data to DynamoDB
