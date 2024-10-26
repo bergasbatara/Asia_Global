@@ -3,7 +3,7 @@ import boto3
 from decimal import Decimal
 
 # Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-1')  # Use your AWS region
+dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region
 
 # Replace 'your_table_name' with your DynamoDB table name
 table_name = 'Sample_Data'  # Replace with your table name
