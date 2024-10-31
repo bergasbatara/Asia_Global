@@ -3,23 +3,41 @@ import pandas as pd #type: ignore
 from reportlab.lib.pagesizes import A4 #type: ignore
 from reportlab.lib import colors #type: ignore
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle #type: ignore
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer #type: ignore
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether #type: ignore
 from reportlab.pdfgen import canvas #type: ignore
+from reportlab.lib.units import cm #type: ignore
 from datetime import datetime
 from openpyxl import Workbook #type: ignore
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font #type: ignore
 from openpyxl.utils.dataframe import dataframe_to_rows #type: ignore
 
+# PDF Class for easier code use 
+class PDFReport:
+    def __init__(self, filename):
+        self.filename = filename
+        self.doc = SimpleDocTemplate(filename, pagesize=A4)
+        self.elements = []
+        
+    def add_footer(self, canvas, doc):
+        footer_left = "www.agf.co.id  |  office@agf.co.id"
+        footer_right = f"Generated on: {datetime.now().strftime('%d %B %Y')}"
+        
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(10, 20, footer_left)  # Left-aligned footer text
+        canvas.drawRightString(A4[0] - 10, 20, footer_right)  # Right-aligned footer text
+        canvas.restoreState()
+        
+    def build_pdf(self):
+        # Build the document with footer on each page
+        self.doc.build(self.elements, onFirstPage=self.add_footer, onLaterPages=self.add_footer)
+
 def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language, report_date, report_type):
-    # Setup for PDF document
-    doc = SimpleDocTemplate(filename, pagesize=A4)
-    elements = []
+    pdf = PDFReport(filename)  # Create an instance of PDFReport
     
     # Custom styles
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='CenterTitle', alignment=1, fontSize=16, spaceAfter=20, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='TableHeader', alignment=1, fontSize=12, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='Footer', fontSize=8, alignment=0))
 
     # Format header date based on report type
     if report_type == "yearly":
@@ -32,27 +50,20 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
         end_of_week = (report_date + pd.Timedelta(days=6)).strftime('%d %B %Y')
         header_text = f"Date of report for the week of {start_of_week} to {end_of_week}" if language != 'i' else f"Tanggal Laporan untuk minggu {start_of_week} sampai {end_of_week}"
     else:
-        header_text = "Date of report: " + report_date.strftime('%d %B %Y')  # Default to full date if type is unknown
+        header_text = "Date of report: " + report_date.strftime('%d %B %Y')
 
-    elements.append(Paragraph(header_text, styles['CenterTitle']))
+    pdf.elements.append(Paragraph(header_text, styles['CenterTitle']))
 
     # Column names and titles based on language
-    if language == 'i':
-        column_names = ["Komponen", "Product ID", "Jumlah"]
-        row_titles = ["Jasa Pendapatan", "Total Pendapatan", "Laba Rugi Harian", "Total Arus Kas", "Saldo Kas Harian", "Aktiva dan Kewajiban Harian", "Total Aset", "Total Utang", "Total Ekuitas"]
-    else:
-        column_names = ["Component", "Product ID", "Amount"]
-        row_titles = ["Service Revenue", "Total Revenue", "Daily Profit and Loss", "Total Cash Flow", "Daily Cash Balance", "Daily Assets and Liabilities", "Total Assets", "Total Debt", "Total Equity"]
-
-    # Table header row
+    column_names = ["Komponen", "Product ID", "Jumlah"] if language == 'i' else ["Component", "Product ID", "Amount"]
     data = [column_names]
     
     # Add rows from summary
     for product_id, amount in summary.get('sales', {}).items():
-        data.append([row_titles[0], product_id, f"Rp {amount:,.2f}"])
-    
+        data.append(["Jasa Pendapatan", product_id, f"Rp {amount:,.2f}"])
+
     # Add Total row
-    data.append([row_titles[1], "", f"Rp {total_sales:,.2f}"])
+    data.append(["Total Pendapatan", "", f"Rp {total_sales:,.2f}"])
 
     # Create the table and style it
     table = Table(data, colWidths=[150, 100, 120])
@@ -65,17 +76,17 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
     ]))
-    elements.append(table)
-    elements.append(Spacer(1, 20))
+    pdf.elements.append(table)
+    pdf.elements.append(Spacer(1, 20))
 
     # Financial Summary section
     financial_data = [
-        (row_titles[2], f"Rp {net_profit:,.2f}"),
-        (row_titles[3], f"Rp {net_profit:,.2f}"),
-        (row_titles[4], f"Rp {final_capital:,.2f}"),
-        (row_titles[6], f"Rp {total_assets:,.2f}"),
-        (row_titles[7], f"Rp {total_liabilities:,.2f}"),
-        (row_titles[8], f"Rp {total_equity:,.2f}")
+        ("Laba Rugi Harian" if language == 'i' else "Daily Profit and Loss", f"Rp {net_profit:,.2f}"),
+        ("Total Arus Kas" if language == 'i' else "Total Cash Flow", f"Rp {net_profit:,.2f}"),
+        ("Saldo Kas Harian" if language == 'i' else "Daily Cash Balance", f"Rp {final_capital:,.2f}"),
+        ("Total Aset" if language == 'i' else "Total Assets", f"Rp {total_assets:,.2f}"),
+        ("Total Utang" if language == 'i' else "Total Debt", f"Rp {total_liabilities:,.2f}"),
+        ("Total Ekuitas" if language == 'i' else "Total Equity", f"Rp {total_equity:,.2f}")
     ]
 
     # Add Financial Summary as a separate table
@@ -88,21 +99,76 @@ def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
         ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
     ]))
-    elements.append(summary_table)
+    pdf.elements.append(summary_table)
 
-    # Footer setup
-    def add_footer(canvas, doc):
-        footer_left = "www.agf.co.id  |  office@agf.co.id"
-        footer_right = f"Generated on: {datetime.now().strftime('%d %B %Y')}"
+    # Build the PDF with the footer
+    pdf.build_pdf()
 
-        canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.drawString(10, 20, footer_left)  # Left-aligned footer text
-        canvas.drawRightString(A4[0] - 10, 20, footer_right)  # Right-aligned footer text
-        canvas.restoreState()
+def generate_bilingual_pdf_report(filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_period):
+    pdf = PDFReport(filename)  # Create an instance of PDFReport
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, leading=20)
+    header_style = ParagraphStyle(name='Header', fontSize=12, alignment=0, spaceBefore=12, spaceAfter=6)
+    
+    # Header
+    title_id = Paragraph("Laporan Keuangan", title_style)
+    title_en = Paragraph("Financial Report", title_style)
+    date_id = Paragraph(f"Tanggal Laporan: {report_period}", header_style)
+    date_en = Paragraph(f"Date of report: {report_period}", header_style)
+    pdf.elements.extend([KeepTogether([title_id, title_en]), Spacer(1, 0.2 * cm), KeepTogether([date_id, date_en]), Spacer(1, 0.5 * cm)])
+    
+    # Table setup for Indonesian and English columns
+    table_data = [["Komponen", "Product ID", "Jumlah", "Component", "Product ID", "Amount"]]
+    for product_id, amount in summary.get('sales', {}).items():
+        component_id = "Pendapatan Jasa"
+        component_en = "Service Revenue"
+        table_data.append([
+            component_id, product_id, f"Rp {amount:.2f}",
+            component_en, product_id, f"Rp {amount:.2f}"
+        ])
+    
+    # Add totals for both Indonesian and English columns
+    table_data.append(["Total Pendapatan", "", f"Rp {total_sales:.2f}", "Total Sales", "", f"Rp {total_sales:.2f}"])
 
-    # Build PDF with footer on each page
-    doc.build(elements, onFirstPage=add_footer, onLaterPages=add_footer)
+    # Create the main table and set styles
+    table = Table(table_data, colWidths=[80, 60, 60, 80, 60, 60])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    pdf.elements.append(table)
+    pdf.elements.append(Spacer(1, 0.5 * cm))
+    
+    # Financial Summary in Indonesian and English
+    summary_data = [
+        ["Laba Rugi Harian", f"Rp {net_profit:.2f}", "Daily Profit and Loss", f"Rp {net_profit:.2f}"],
+        ["Total Arus Kas", f"Rp {net_profit:.2f}", "Total Cash Flow", f"Rp {net_profit:.2f}"],
+        ["Saldo Kas Harian", f"Rp {final_capital:.2f}", "Daily Cash Balance", f"Rp {final_capital:.2f}"],
+        ["Total Aset", f"Rp {total_assets:.2f}", "Total Assets", f"Rp {total_assets:.2f}"],
+        ["Total Utang", f"Rp {total_liabilities:.2f}", "Total Debt", f"Rp {total_liabilities:.2f}"],
+        ["Total Ekuitas", f"Rp {total_equity:.2f}", "Total Equity", f"Rp {total_equity:.2f}"]
+    ]
+    
+    # Create summary table with styling
+    summary_table = Table(summary_data, colWidths=[80, 60, 80, 60])
+    summary_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    
+    pdf.elements.append(summary_table)
+    
+    # Build PDF with footer
+    pdf.build_pdf()
 
 def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language):
     # Convert summary to a DataFrame if it's not already in the correct format

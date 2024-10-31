@@ -5,7 +5,7 @@ import uuid
 from boto3.dynamodb.conditions import Key, Attr
 import pandas as pd #type: ignore
 from analyze import analyze_data
-from export import generate_pdf, export_to_excel
+from export import generate_pdf, export_to_excel, generate_bilingual_pdf_report
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region Jakarta
@@ -111,25 +111,6 @@ def main():
 
     language_input = input("What language? (E for English, I for Indonesian) ").lower()
 
-    # if choice_weekly_yearly == 'weekly':
-    #     start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
-    #     start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
-
-    #     transactions = fetch_data_for_week(table, "transaction", start_of_week)
-    #     sales = fetch_data_for_week(table, "sales", start_of_week)
-
-    #     pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
-    #     xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
-
-    # elif choice_weekly_yearly == 'yearly':
-    #     start_of_year = int(input("Enter the year for the report? "))
-    #     transactions = fetch_data_for_year(table, "transaction", start_of_year)
-    #     sales = fetch_data_for_year(table, "sales", start_of_year)
-
-    #     # Generate report filenames based on the current date (weekly report)
-    #     pdf_filename = f"yearly_financial_report_{start_of_year}.pdf"
-    #     xsl_filename = f"yearly_financial_report_{start_of_year}.xlsx"
-
     # Determine report date and type
     if choice_weekly_yearly == 'weekly':
         start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
@@ -169,13 +150,18 @@ def main():
 
     summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
 
-    # Generate the PDF report
-    generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input)
-    print(f"PDF report has been saved to {pdf_filename}")
-
+    if language_input == "i":
+        # Generate the PDF report
+        generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input, report_date, report_type)
+        print(f"PDF report has been saved to {pdf_filename}")
+    else: 
+        generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
+        print(f"PDF report has been saved to {pdf_filename}")
+        
     # Export to Excel
     export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
     print(f"Excel report has been saved to {xsl_filename}")
+
 
 if __name__ == "__main__":
     main()
