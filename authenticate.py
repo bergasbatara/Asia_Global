@@ -23,10 +23,10 @@ def authenticate_user(username, password):
         print("Error authenticating user:", e)
         return None
     
-# Example usage
-db_name = authenticate_user("test_user", "secure_password123")
-if db_name:
-    print(f"Authenticated! Access to user's personal database: {db_name}")
-else:
-    print("Authentication failed.")
+# # Example usage
+# db_name = authenticate_user("test_user", "secure_password123")
+# if db_name:
+#     print(f"Authenticated! Access to user's personal database: {db_name}")
+# else:
+#     print("Authentication failed.")
     

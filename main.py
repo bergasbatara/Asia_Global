@@ -2,17 +2,15 @@ import boto3 #type:ignore
 from datetime import datetime, timedelta
 from decimal import Decimal
 import uuid
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Key, Attr #type: ignore
 import pandas as pd #type: ignore
 from analyze import analyze_data
 from export import generate_pdf, export_to_excel, generate_bilingual_pdf_report
+from authenticate import authenticate_user
+from personal import connect_to_personal_database
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region Jakarta
-
-# Sample_Data table name
-table_name = 'Sample_Data' 
-table = dynamodb.Table(table_name)
 
 # Function to add data to DynamoDB
 def add_data_to_db(table, date, time, product_id, quantity, price, category):
@@ -88,6 +86,22 @@ def fetch_data_for_month(table, category, start_of_month):
 # Unified main function
 def main():
     
+    # Step 1: Authenticate the user
+    username = input("Enter username: ")
+    password = input("Enter password: ")
+
+    # Step 2: Authenticate user and password
+    db_name = authenticate_user(username, password)
+    if not db_name:
+        print("Authentication failed")
+        return
+    
+    # Step 3: Connect to user's personal database
+    user_db = connect_to_personal_database(db_name)
+    if not user_db:
+        print("Failed to connect to database")
+        return
+
     while True:
         # Ask if the user wants to add new data or exit
         action = input("Do you want to add data or type 'exit' to stop? (add/exit): ").lower()
@@ -104,7 +118,7 @@ def main():
         category = input("Enter Category (transaction/sales): ").lower()
 
         # Add the data to DynamoDB
-        add_data_to_db(table, date, time, product_id, quantity, price, category)
+        add_data_to_db(user_db, date, time, product_id, quantity, price, category)
 
     # Choosing between 
     choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)? ").lower()
@@ -131,18 +145,18 @@ def main():
 
     # Fetch data based on report type
     if report_type == 'weekly':
-        transactions = fetch_data_for_week(table, "transaction", report_date)
-        sales = fetch_data_for_week(table, "sales", report_date)
+        transactions = fetch_data_for_week(user_db, "transaction", report_date)
+        sales = fetch_data_for_week(user_db, "sales", report_date)
         pdf_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.pdf"
         xsl_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.xlsx"
     elif report_type == 'monthly':
-        transactions = fetch_data_for_month(table, "transaction", report_date)
-        sales = fetch_data_for_month(table, "sales", report_date)
+        transactions = fetch_data_for_month(user_db, "transaction", report_date)
+        sales = fetch_data_for_month(user_db, "sales", report_date)
         pdf_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.pdf"
         xsl_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.xlsx"
     elif report_type == 'yearly':
-        transactions = fetch_data_for_year(table, "transaction", report_date.year)
-        sales = fetch_data_for_year(table, "sales", report_date.year)
+        transactions = fetch_data_for_year(user_db, "transaction", report_date.year)
+        sales = fetch_data_for_year(user_db, "sales", report_date.year)
         pdf_filename = f"yearly_financial_report_{report_date.year}.pdf"
         xsl_filename = f"yearly_financial_report_{report_date.year}.xlsx"
 
@@ -157,7 +171,7 @@ def main():
     else: 
         generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
         print(f"PDF report has been saved to {pdf_filename}")
-        
+
     # Export to Excel
     export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
     print(f"Excel report has been saved to {xsl_filename}")

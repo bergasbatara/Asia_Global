@@ -26,16 +26,16 @@ def connect_to_personal_database(database_name):
         print(f"Error connecting to {database_name}: {e}")
         return None
 
-# First, authenticate the user
-db_name = authenticate_user("test_user", "secure_password123")
+# # First, authenticate the user
+# db_name = authenticate_user("test_user", "secure_password123")
 
-# If authentication is successful, connect to the user's personal database
-if db_name:
-    user_db = connect_to_personal_database(db_name)
-    if user_db:
-        # Now you can perform actions on the user's personal database (e.g., fetch, update data)
-        # Example: Fetch all items from the user's database
-        response = user_db.scan()
-        print("User's data:", response['Items'])
-else:
-    print("Authentication failed or database connection issue.")
+# # If authentication is successful, connect to the user's personal database
+# if db_name:
+#     user_db = connect_to_personal_database(db_name)
+#     if user_db:
+#         # Now you can perform actions on the user's personal database (e.g., fetch, update data)
+#         # Example: Fetch all items from the user's database
+#         response = user_db.scan()
+#         print("User's data:", response['Items'])
+# else:
+#     print("Authentication failed or database connection issue.")
