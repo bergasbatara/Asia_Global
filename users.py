@@ -28,4 +28,4 @@ def register_user(username, password, database_name):
             print("Error registering user:", e)
 
 # Example usage
-register_user("test_user", "secure_password123", "User1Database")
+register_user("test_user", "secure_password123", "Sample_Data")
