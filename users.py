@@ -6,21 +6,59 @@ from botocore.exceptions import ClientError #type: ignore
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Replace 'your-region' with your actual region
 users_table = dynamodb.Table('Central_DB')  # Replace with the actual name of your DynamoDB table
 
-def register_user(username, password, database_name):
+def create_personal_database_table(username):
+    try:
+        # Define the table name based on username
+        table_name = f"{username}_PersonalDB"
+        
+        # Create a new table with the specified schema
+        table = dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {'AttributeName': 'id', 'KeyType': 'HASH'},  # Partition key
+                {'AttributeName': 'Product_id', 'KeyType': 'RANGE'}  # Sort key
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'id', 'AttributeType': 'S'},  # Partition key
+                {'AttributeName': 'Product_id', 'AttributeType': 'S'}  # Sort key
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': 5,
+                'WriteCapacityUnits': 5
+            }
+        )
+        
+        # Wait for the table to be created
+        table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
+        print(f"Personal database '{table_name}' created successfully for {username}.")
+        
+        return table_name
+    except ClientError as e:
+        print(f"Error creating personal database for {username}: {e}")
+        return None
+
+def register_user(username, password):
     # Hash the password
     password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
-    # Add the user to the DynamoDB Users table
+    # Check if the username already exists
     try:
+        # Add the user to the central database
         users_table.put_item(
             Item={
                 'Username': username,
                 'PasswordHash': password_hash,
-                'DatabaseName': database_name
+                'DatabaseName': f"{username}_PersonalDB"  # Set the name for the personal database
             },
-            ConditionExpression='attribute_not_exists(Username)'  # Ensure the username is unique
+            ConditionExpression='attribute_not_exists(Username)'  # Ensure username is unique
         )
-        print("User registered successfully.")
+        
+        # Create a personal database for the user
+        personal_db_name = create_personal_database_table(username)
+        if personal_db_name:
+            print("User registered and personal database created successfully.")
+        else:
+            print("User registered, but there was an issue creating the personal database.")
     except ClientError as e:
         if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
             print("Username already exists.")
@@ -28,4 +66,4 @@ def register_user(username, password, database_name):
             print("Error registering user:", e)
 
 # Example usage
-register_user("test_user", "secure_password123", "Sample_Data")
+register_user("new_user", "password123")

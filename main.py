@@ -8,6 +8,7 @@ from analyze import analyze_data
 from export import generate_pdf, export_to_excel, generate_bilingual_pdf_report
 from authenticate import authenticate_user
 from personal import connect_to_personal_database
+from users import register_user
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Use your AWS region Jakarta
@@ -86,21 +87,52 @@ def fetch_data_for_month(table, category, start_of_month):
 # Unified main function
 def main():
     
-    # Step 1: Authenticate the user
-    username = input("Enter username: ")
-    password = input("Enter password: ")
+    # Step 1: Prompt the user to choose between login and register
+    option = input("Do you want to login or register (L for login, R for register): ").lower()
 
-    # Step 2: Authenticate user and password
-    db_name = authenticate_user(username, password)
-    if not db_name:
-        print("Authentication failed")
-        return
-    
-    # Step 3: Connect to user's personal database
-    user_db = connect_to_personal_database(db_name)
-    if not user_db:
-        print("Failed to connect to database")
-        return
+    if option == 'r':
+        # Registration flow
+        username = input("Enter a username for registration: ")
+        password = input("Enter a password for registration: ")
+        
+        # Call the register_user function
+        registration_result = register_user(username, password)
+        
+        if registration_result['status'] == 'success':
+            print(registration_result['message'])
+            # You can proceed to login directly if needed
+        elif registration_result['status'] == 'partial_success':
+            print(registration_result['message'])
+            # Partial success indicates user registration succeeded, but database creation failed
+        else:
+            print(registration_result['message'])
+            # Registration failed; exit or retry as needed
+
+    elif option == 'l':
+        # Login flow
+        username = input("Enter your username for login: ")
+        password = input("Enter your password for login: ")
+        
+        # Call the authenticate_user function
+        auth_result = authenticate_user(username, password)
+        
+        if auth_result['status'] == 'success':
+            print("Authentication successful.")
+            
+            # Connect to the user's personal database
+            personal_db_name = auth_result['database_name']
+            db_connection_result = connect_to_personal_database(personal_db_name)
+            
+            if db_connection_result:
+                print(f"Connected to {personal_db_name} successfully.")
+                # Run the application features after successful login and connection
+            else:
+                print("Failed to connect to the personal database.")
+        else:
+            print(auth_result['message'])  # Display authentication failure message
+
+    else:
+        print("Invalid option. Please enter 'L' to login or 'R' to register.")
 
     while True:
         # Ask if the user wants to add new data or exit
@@ -118,7 +150,7 @@ def main():
         category = input("Enter Category (transaction/sales): ").lower()
 
         # Add the data to DynamoDB
-        add_data_to_db(user_db, date, time, product_id, quantity, price, category)
+        add_data_to_db(db_connection_result, date, time, product_id, quantity, price, category)
 
     # Choosing between 
     choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)? ").lower()
@@ -145,18 +177,18 @@ def main():
 
     # Fetch data based on report type
     if report_type == 'weekly':
-        transactions = fetch_data_for_week(user_db, "transaction", report_date)
-        sales = fetch_data_for_week(user_db, "sales", report_date)
+        transactions = fetch_data_for_week(db_connection_result, "transaction", report_date)
+        sales = fetch_data_for_week(db_connection_result, "sales", report_date)
         pdf_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.pdf"
         xsl_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.xlsx"
     elif report_type == 'monthly':
-        transactions = fetch_data_for_month(user_db, "transaction", report_date)
-        sales = fetch_data_for_month(user_db, "sales", report_date)
+        transactions = fetch_data_for_month(db_connection_result, "transaction", report_date)
+        sales = fetch_data_for_month(db_connection_result, "sales", report_date)
         pdf_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.pdf"
         xsl_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.xlsx"
     elif report_type == 'yearly':
-        transactions = fetch_data_for_year(user_db, "transaction", report_date.year)
-        sales = fetch_data_for_year(user_db, "sales", report_date.year)
+        transactions = fetch_data_for_year(db_connection_result, "transaction", report_date.year)
+        sales = fetch_data_for_year(db_connection_result, "sales", report_date.year)
         pdf_filename = f"yearly_financial_report_{report_date.year}.pdf"
         xsl_filename = f"yearly_financial_report_{report_date.year}.xlsx"
 
