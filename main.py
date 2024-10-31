@@ -1,9 +1,9 @@
-import boto3
+import boto3 #type:ignore
 from datetime import datetime, timedelta
 from decimal import Decimal
 import uuid
 from boto3.dynamodb.conditions import Key, Attr
-import pandas as pd
+import pandas as pd #type: ignore
 from analyze import analyze_data
 from export import generate_pdf, export_to_excel
 
@@ -66,6 +66,24 @@ def fetch_data_for_year(table, category, year):
 
     return all_data
 
+# Function to fetch data for a specific month
+def fetch_data_for_month(table, category, start_of_month):
+    # Calculate the end of the month
+    if start_of_month.month == 12:
+        end_of_month = datetime(start_of_month.year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end_of_month = datetime(start_of_month.year, start_of_month.month + 1, 1) - timedelta(days=1)
+    
+    start_date_str = start_of_month.strftime('%Y-%m-%d')
+    end_date_str = end_of_month.strftime('%Y-%m-%d')
+
+    # Query DynamoDB for data within the specified month and category
+    response = table.scan(
+        FilterExpression=Attr('Date').between(start_date_str, end_date_str) & Attr('Category').eq(category)
+    )
+    
+    data = pd.DataFrame(response['Items'])
+    return data
 
 # Unified main function
 def main():
@@ -93,24 +111,59 @@ def main():
 
     language_input = input("What language? (E for English, I for Indonesian) ").lower()
 
+    # if choice_weekly_yearly == 'weekly':
+    #     start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
+    #     start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
+
+    #     transactions = fetch_data_for_week(table, "transaction", start_of_week)
+    #     sales = fetch_data_for_week(table, "sales", start_of_week)
+
+    #     pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
+    #     xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
+
+    # elif choice_weekly_yearly == 'yearly':
+    #     start_of_year = int(input("Enter the year for the report? "))
+    #     transactions = fetch_data_for_year(table, "transaction", start_of_year)
+    #     sales = fetch_data_for_year(table, "sales", start_of_year)
+
+    #     # Generate report filenames based on the current date (weekly report)
+    #     pdf_filename = f"yearly_financial_report_{start_of_year}.pdf"
+    #     xsl_filename = f"yearly_financial_report_{start_of_year}.xlsx"
+
+    # Determine report date and type
     if choice_weekly_yearly == 'weekly':
         start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
-        start_of_week = datetime.strptime(start_of_week_str, '%Y-%m-%d')
-
-        transactions = fetch_data_for_week(table, "transaction", start_of_week)
-        sales = fetch_data_for_week(table, "sales", start_of_week)
-
-        pdf_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.pdf"
-        xsl_filename = f"weekly_financial_report_{start_of_week_str}_to_{(start_of_week + timedelta(days=6)).strftime('%Y-%m-%d')}.xlsx"
-
+        report_date = datetime.strptime(start_of_week_str, '%Y-%m-%d')
+        report_type = 'weekly'
+    elif choice_weekly_yearly == 'monthly':
+        year = int(input("Enter the year for the report: "))
+        month = int(input("Enter the month (1-12) for the report: "))
+        report_date = datetime(year, month, 1)
+        report_type = 'monthly'
     elif choice_weekly_yearly == 'yearly':
-        start_of_year = int(input("Enter the year for the report? "))
-        transactions = fetch_data_for_year(table, "transaction", start_of_year)
-        sales = fetch_data_for_year(table, "sales", start_of_year)
+        year = int(input("Enter the year for the report: "))
+        report_date = datetime(year, 1, 1)
+        report_type = 'yearly'
+    else:
+        print("Invalid choice. Exiting.")
+        return
 
-        # Generate report filenames based on the current date (weekly report)
-        pdf_filename = f"yearly_financial_report_{start_of_year}.pdf"
-        xsl_filename = f"yearly_financial_report_{start_of_year}.xlsx"
+    # Fetch data based on report type
+    if report_type == 'weekly':
+        transactions = fetch_data_for_week(table, "transaction", report_date)
+        sales = fetch_data_for_week(table, "sales", report_date)
+        pdf_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.pdf"
+        xsl_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.xlsx"
+    elif report_type == 'monthly':
+        transactions = fetch_data_for_month(table, "transaction", report_date)
+        sales = fetch_data_for_month(table, "sales", report_date)
+        pdf_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.pdf"
+        xsl_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.xlsx"
+    elif report_type == 'yearly':
+        transactions = fetch_data_for_year(table, "transaction", report_date.year)
+        sales = fetch_data_for_year(table, "sales", report_date.year)
+        pdf_filename = f"yearly_financial_report_{report_date.year}.pdf"
+        xsl_filename = f"yearly_financial_report_{report_date.year}.xlsx"
 
     initial_capital = 10000.0
 

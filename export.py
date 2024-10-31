@@ -1,121 +1,108 @@
 import pandas as pd #type: ignore
-from fpdf import FPDF #type: ignore
+# from fpdf import FPDF #type: ignore
+from reportlab.lib.pagesizes import A4 #type: ignore
+from reportlab.lib import colors #type: ignore
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle #type: ignore
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer #type: ignore
+from reportlab.pdfgen import canvas #type: ignore
 from datetime import datetime
 from openpyxl import Workbook #type: ignore
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font #type: ignore
 from openpyxl.utils.dataframe import dataframe_to_rows #type: ignore
 
-class CustomPDF(FPDF):
-    def footer(self):
-        # Set the position at 1.5 cm from the bottom
-        self.set_y(-15)
-        
-        # Add the logo image (adjust the path and size as needed)
-        # self.image('/path/to/your/logo.png', 10, self.get_y(), 10)  # Adjust coordinates and size as needed
-        
-        # Set font for the footer
-        self.set_font('Arial', 'I', 8)
-        
-        # Add website and email
-        self.cell(0, 10, 'www.agf.co.id  |  office@agf.co.id', ln=False, align='L')
-
-        # Add the date (on the right side)
-        self.set_x(-30)  # Position on the right
-        self.cell(0, 10, datetime.now().strftime('%d %B %Y'), ln=False, align='R')
-
-def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language):
-    pdf = CustomPDF()  # Use the custom PDF class with the footer
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 12)
-
-    # If language is in Indonesian 
-    if language == 'i':
-        pdf.cell(200, 10, f"Tanggal Laporan: {pd.Timestamp.now().strftime('%d %B %Y')}", ln=True, align='C')
-        pdf.ln(5)
-
-        # Table headers
-        pdf.set_fill_color(200, 220, 255)  # Light blue background for header
-        column_widths = [90, 40, 60]  # Define column widths
-        pdf.set_font('Arial', 'B', 12)
-        headers = ['Komponen', 'Product ID', 'Jumlah']
-        for header in headers:
-            pdf.cell(column_widths[headers.index(header)], 10, header, border=1, ln=0, align='C', fill=True)
-        pdf.ln()
-
-        # Table rows
-        pdf.set_font('Arial', '', 12)
-        for product_id, amount in summary['sales'].items():
-            pdf.cell(column_widths[0], 10, "Pendapatan Jasa", border=1, ln=0)
-            pdf.cell(column_widths[1], 10, str(product_id), border=1, ln=0, align='C')
-            pdf.cell(column_widths[2], 10, f"Rp {amount:,.2f}", border=1, ln=0, align='R')
-            pdf.ln()
-
-        # Total line
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(column_widths[0] + column_widths[1], 10, "Total Pendapatan", border=1, ln=0)
-        pdf.cell(column_widths[2], 10, f"Rp {total_sales:,.2f}", border=1, ln=0, align='R')
-        pdf.ln(10)
-
-        # Reduce font size for additional sections
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(190, 10, f"Laba Rugi Harian: Rp {net_profit:,.2f}", border=1, ln=1, align='L')
-        pdf.cell(190, 10, f"Total Arus Kas: Rp {net_profit:,.2f}", border=1, ln=1, align='L')
-        pdf.cell(190, 10, f"Saldo Kas Harian: Rp {final_capital:,.2f}", border=1, ln=1, align='L')
-
-        # Aktiva dan Kewajiban Harian
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(190, 10, "Aktiva dan Kewajiban Harian:", ln=1, align='L')
-        pdf.set_font('Arial', '', 12)
-        pdf.cell(95, 10, f"Total Aset: Rp {total_assets:,.2f}", border=1, ln=0, align='L')
-        pdf.cell(95, 10, f"Total Utang: Rp {total_liabilities:,.2f}", border=1, ln=0, align='L')
-        pdf.ln()
-        pdf.cell(95, 10, f"Total Ekuitas: Rp {total_equity:,.2f}", border=1, ln=1, align='L')
+def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language, report_date, report_type):
+    # Setup for PDF document
+    doc = SimpleDocTemplate(filename, pagesize=A4)
+    elements = []
     
-    # If language is in English
+    # Custom styles
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='CenterTitle', alignment=1, fontSize=16, spaceAfter=20, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='TableHeader', alignment=1, fontSize=12, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='Footer', fontSize=8, alignment=0))
+
+    # Format header date based on report type
+    if report_type == "yearly":
+        header_text = f"Date of report for the year {report_date.year}" if language != 'i' else f"Tanggal Laporan untuk tahun {report_date.year}"
+    elif report_type == "monthly":
+        month_name = report_date.strftime('%B')
+        header_text = f"Date of report for {month_name} {report_date.year}" if language != 'i' else f"Tanggal Laporan untuk {month_name} {report_date.year}"
+    elif report_type == "weekly":
+        start_of_week = report_date.strftime('%d %B %Y')
+        end_of_week = (report_date + pd.Timedelta(days=6)).strftime('%d %B %Y')
+        header_text = f"Date of report for the week of {start_of_week} to {end_of_week}" if language != 'i' else f"Tanggal Laporan untuk minggu {start_of_week} sampai {end_of_week}"
     else:
-        pdf.cell(200, 10, f"Date of report: {pd.Timestamp.now().strftime('%d %B %Y')}", ln=True, align='C')
-        pdf.ln(5)
+        header_text = "Date of report: " + report_date.strftime('%d %B %Y')  # Default to full date if type is unknown
 
-        # Table headers
-        pdf.set_fill_color(200, 220, 255)  # Light blue background for header
-        column_widths = [90, 40, 60]  # Define column widths
-        pdf.set_font('Arial', 'B', 12)
-        headers = ['Component', 'Product ID', 'Amount']
-        for header in headers:
-            pdf.cell(column_widths[headers.index(header)], 10, header, border=1, ln=0, align='C', fill=True)
-        pdf.ln()
+    elements.append(Paragraph(header_text, styles['CenterTitle']))
 
-        # Table rows
-        pdf.set_font('Arial', '', 12)
-        for product_id, amount in summary['sales'].items():
-            pdf.cell(column_widths[0], 10, "Service Revenue", border=1, ln=0)
-            pdf.cell(column_widths[1], 10, str(product_id), border=1, ln=0, align='C')
-            pdf.cell(column_widths[2], 10, f"Rp {amount:,.2f}", border=1, ln=0, align='R')
-            pdf.ln()
+    # Column names and titles based on language
+    if language == 'i':
+        column_names = ["Komponen", "Product ID", "Jumlah"]
+        row_titles = ["Jasa Pendapatan", "Total Pendapatan", "Laba Rugi Harian", "Total Arus Kas", "Saldo Kas Harian", "Aktiva dan Kewajiban Harian", "Total Aset", "Total Utang", "Total Ekuitas"]
+    else:
+        column_names = ["Component", "Product ID", "Amount"]
+        row_titles = ["Service Revenue", "Total Revenue", "Daily Profit and Loss", "Total Cash Flow", "Daily Cash Balance", "Daily Assets and Liabilities", "Total Assets", "Total Debt", "Total Equity"]
 
-        # Total line
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(column_widths[0] + column_widths[1], 10, "Total Revenue", border=1, ln=0)
-        pdf.cell(column_widths[2], 10, f"Rp {total_sales:,.2f}", border=1, ln=0, align='R')
-        pdf.ln(10)
+    # Table header row
+    data = [column_names]
+    
+    # Add rows from summary
+    for product_id, amount in summary.get('sales', {}).items():
+        data.append([row_titles[0], product_id, f"Rp {amount:,.2f}"])
+    
+    # Add Total row
+    data.append([row_titles[1], "", f"Rp {total_sales:,.2f}"])
 
-        # Reduce font size for additional sections
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(190, 10, f"Daily Profit and Loss: Rp {net_profit:,.2f}", border=1, ln=1, align='L')
-        pdf.cell(190, 10, f"Total Cash Flow: Rp {net_profit:,.2f}", border=1, ln=1, align='L')
-        pdf.cell(190, 10, f"Daily Cash Balance: Rp {final_capital:,.2f}", border=1, ln=1, align='L')
+    # Create the table and style it
+    table = Table(data, colWidths=[150, 100, 120])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 20))
 
-        # Daily Assets and Liabilities
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(190, 10, "Daily Assets and Liabilities:", ln=1, align='L')
-        pdf.set_font('Arial', '', 12)
-        pdf.cell(95, 10, f"Total Assets: Rp {total_assets:,.2f}", border=1, ln=0, align='L')
-        pdf.cell(95, 10, f"Total Debt: Rp {total_liabilities:,.2f}", border=1, ln=0, align='L')
-        pdf.ln()
-        pdf.cell(95, 10, f"Total Equity: Rp {total_equity:,.2f}", border=1, ln=1, align='L')
+    # Financial Summary section
+    financial_data = [
+        (row_titles[2], f"Rp {net_profit:,.2f}"),
+        (row_titles[3], f"Rp {net_profit:,.2f}"),
+        (row_titles[4], f"Rp {final_capital:,.2f}"),
+        (row_titles[6], f"Rp {total_assets:,.2f}"),
+        (row_titles[7], f"Rp {total_liabilities:,.2f}"),
+        (row_titles[8], f"Rp {total_equity:,.2f}")
+    ]
 
-    # Output the PDF to a file
-    pdf.output(filename)
+    # Add Financial Summary as a separate table
+    summary_table_data = [[title, value] for title, value in financial_data]
+    summary_table = Table(summary_table_data, colWidths=[250, 120])
+    summary_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
+    ]))
+    elements.append(summary_table)
+
+    # Footer setup
+    def add_footer(canvas, doc):
+        footer_left = "www.agf.co.id  |  office@agf.co.id"
+        footer_right = f"Generated on: {datetime.now().strftime('%d %B %Y')}"
+
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(10, 20, footer_left)  # Left-aligned footer text
+        canvas.drawRightString(A4[0] - 10, 20, footer_right)  # Right-aligned footer text
+        canvas.restoreState()
+
+    # Build PDF with footer on each page
+    doc.build(elements, onFirstPage=add_footer, onLaterPages=add_footer)
 
 def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language):
     # Convert summary to a DataFrame if it's not already in the correct format
