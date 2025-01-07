@@ -32,6 +32,175 @@ class PDFReport:
         # Build the document with footer on each page
         self.doc.build(self.elements, onFirstPage=self.add_footer, onLaterPages=self.add_footer)
 
+def generate_balance_sheet_pdf(assets, liabilities, equity, filename, language):
+    pdf = PDFReport(filename)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, spaceAfter=20, fontName='Helvetica-Bold')
+    
+    title = "Balance Sheet" if language != 'i' else "Neraca"
+    pdf.elements.append(Paragraph(title, title_style))
+    
+    data = [["Assets" if language != 'i' else "Aset", "Liabilities & Equity" if language != 'i' else "Kewajiban & Ekuitas"]]
+    
+    for asset, value in assets.items():
+        data.append([f"{asset}: Rp {value:,.2f}", ""])
+    
+    for liability, value in liabilities.items():
+        data.append(["", f"{liability}: Rp {value:,.2f}"])
+    
+    for equity_item, value in equity.items():
+        data.append(["", f"{equity_item}: Rp {value:,.2f}"])
+    
+    table = Table(data, colWidths=[250, 250])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    
+    pdf.elements.append(table)
+    pdf.build_pdf()
+
+def generate_pnl_pdf(revenues, expenses, net_income, filename, language, report_date):
+    pdf = PDFReport(filename)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, spaceAfter=20, fontName='Helvetica-Bold')
+    
+    title = "Profit and Loss Statement" if language != 'i' else "Laporan Laba Rugi"
+    pdf.elements.append(Paragraph(title, title_style))
+    
+    # Add report date
+    date_text = f"Date: {report_date.strftime('%d %B %Y')}" if language != 'i' else f"Tanggal: {report_date.strftime('%d %B %Y')}"
+    pdf.elements.append(Paragraph(date_text, styles['Normal']))
+    pdf.elements.append(Spacer(1, 12))
+    
+    data = [["Item", "Amount"]]
+    
+    # Add revenues
+    for revenue, value in revenues.items():
+        data.append([f"{revenue}", f"Rp {value:,.2f}"])
+    
+    data.append(["Total Revenue" if language != 'i' else "Total Pendapatan", f"Rp {sum(revenues.values()):,.2f}"])
+    
+    # Add expenses
+    for expense, value in expenses.items():
+        data.append([f"{expense}", f"Rp {value:,.2f}"])
+    
+    data.append(["Total Expenses" if language != 'i' else "Total Pengeluaran", f"Rp {sum(expenses.values()):,.2f}"])
+    data.append(["Net Income" if language != 'i' else "Laba Bersih", f"Rp {net_income:,.2f}"])
+    
+    table = Table(data, colWidths=[300, 200])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    
+    pdf.elements.append(table)
+    pdf.build_pdf()
+
+def generate_cash_flow_pdf(operating_activities, investing_activities, financing_activities, net_cash_flow, beginning_cash, ending_cash, filename, language, report_date):
+    pdf = PDFReport(filename)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, spaceAfter=20, fontName='Helvetica-Bold')
+    
+    title = "Cash Flow Statement" if language != 'i' else "Laporan Arus Kas"
+    pdf.elements.append(Paragraph(title, title_style))
+    
+    # Add report date
+    date_text = f"Date: {report_date.strftime('%d %B %Y')}" if language != 'i' else f"Tanggal: {report_date.strftime('%d %B %Y')}"
+    pdf.elements.append(Paragraph(date_text, styles['Normal']))
+    pdf.elements.append(Spacer(1, 12))
+    
+    data = [["Activity", "Amount"]]
+    
+    # Operating Activities
+    data.append(["Operating Activities" if language != 'i' else "Aktivitas Operasi", ""])
+    for activity, value in operating_activities.items():
+        data.append([f"  {activity}", f"Rp {value:,.2f}"])
+    data.append(["Net Cash from Operating Activities" if language != 'i' else "Arus Kas Bersih dari Aktivitas Operasi", 
+                 f"Rp {sum(operating_activities.values()):,.2f}"])
+    
+    # Investing Activities
+    data.append(["Investing Activities" if language != 'i' else "Aktivitas Investasi", ""])
+    for activity, value in investing_activities.items():
+        data.append([f"  {activity}", f"Rp {value:,.2f}"])
+    data.append(["Net Cash from Investing Activities" if language != 'i' else "Arus Kas Bersih dari Aktivitas Investasi", 
+                 f"Rp {sum(investing_activities.values()):,.2f}"])
+    
+    # Financing Activities
+    data.append(["Financing Activities" if language != 'i' else "Aktivitas Pendanaan", ""])
+    for activity, value in financing_activities.items():
+        data.append([f"  {activity}", f"Rp {value:,.2f}"])
+    data.append(["Net Cash from Financing Activities" if language != 'i' else "Arus Kas Bersih dari Aktivitas Pendanaan", 
+                 f"Rp {sum(financing_activities.values()):,.2f}"])
+    
+    # Net Cash Flow
+    data.append(["Net Cash Flow" if language != 'i' else "Arus Kas Bersih", f"Rp {net_cash_flow:,.2f}"])
+    
+    # Beginning and Ending Cash
+    data.append(["Beginning Cash" if language != 'i' else "Kas Awal", f"Rp {beginning_cash:,.2f}"])
+    data.append(["Ending Cash" if language != 'i' else "Kas Akhir", f"Rp {ending_cash:,.2f}"])
+    
+    table = Table(data, colWidths=[300, 200])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    
+    pdf.elements.append(table)
+    pdf.build_pdf()
+
+def generate_equity_statement_pdf(equity_components, total_equity, filename, language, report_date):
+    pdf = PDFReport(filename)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, spaceAfter=20, fontName='Helvetica-Bold')
+    
+    title = "Statement of Changes in Equity" if language != 'i' else "Laporan Perubahan Ekuitas"
+    pdf.elements.append(Paragraph(title, title_style))
+    
+    # Add report date
+    date_text = f"Date: {report_date.strftime('%d %B %Y')}" if language != 'i' else f"Tanggal: {report_date.strftime('%d %B %Y')}"
+    pdf.elements.append(Paragraph(date_text, styles['Normal']))
+    pdf.elements.append(Spacer(1, 12))
+    
+    data = [["Component" if language != 'i' else "Komponen", "Amount" if language != 'i' else "Jumlah"]]
+    
+    for component, value in equity_components.items():
+        data.append([component, f"Rp {value:,.2f}"])
+    
+    data.append(["Total Equity" if language != 'i' else "Total Ekuitas", f"Rp {total_equity:,.2f}"])
+    
+    table = Table(data, colWidths=[300, 200])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+    ]))
+    
+    pdf.elements.append(table)
+    pdf.build_pdf()
+
 def generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language, report_date, report_type):
     pdf = PDFReport(filename)  # Create an instance of PDFReport
     
@@ -170,6 +339,189 @@ def generate_bilingual_pdf_report(filename, summary, total_sales, total_purchase
     # Build PDF with footer
     pdf.build_pdf()
 
+def export_balance_sheet_to_excel(assets, liabilities, equity, filename, language):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Balance Sheet"
+    
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+    number_format = '#,##0.00'
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Add headers
+    headers = ["Assets" if language != 'i' else "Aset", "Liabilities & Equity" if language != 'i' else "Kewajiban & Ekuitas"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+    
+    # Add data
+    row = 2
+    for asset, value in assets.items():
+        ws.cell(row=row, column=1, value=asset)
+        ws.cell(row=row, column=2, value=value).number_format = number_format
+        row += 1
+    
+    row = 2
+    for liability, value in liabilities.items():
+        ws.cell(row=row, column=3, value=liability)
+        ws.cell(row=row, column=4, value=value).number_format = number_format
+        row += 1
+    
+    for equity_item, value in equity.items():
+        ws.cell(row=row, column=3, value=equity_item)
+        ws.cell(row=row, column=4, value=value).number_format = number_format
+        row += 1
+    
+    # Set column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+    
+    wb.save(filename)
+
+def export_pnl_to_excel(revenues, expenses, net_income, filename, language):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Profit and Loss Statement"
+    
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+    number_format = '#,##0.00'
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Add headers
+    headers = ["Item", "Amount"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+    
+    # Add revenue data
+    for revenue, value in revenues.items():
+        ws.append([revenue, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    ws.append(["Total Revenue" if language != 'i' else "Total Pendapatan", sum(revenues.values())])
+    ws.cell(row=ws.max_row, column=2).number_format = number_format
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    
+    # Add expense data
+    for expense, value in expenses.items():
+        ws.append([expense, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    ws.append(["Total Expenses" if language != 'i' else "Total Pengeluaran", sum(expenses.values())])
+    ws.cell(row=ws.max_row, column=2).number_format = number_format
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    
+    # Add net income
+    ws.append(["Net Income" if language != 'i' else "Laba Bersih", net_income])
+    ws.cell(row=ws.max_row, column=2).number_format = number_format
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 15
+    
+    wb.save(filename)
+
+def export_cash_flow_to_excel(operating_activities, investing_activities, financing_activities, net_cash_flow, filename, language):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cash Flow Statement"
+    
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+    number_format = '#,##0.00'
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Add headers
+    headers = ["Activity", "Amount"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+    
+    # Add operating activities
+    ws.append(["Operating Activities" if language != 'i' else "Aktivitas Operasi"])
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    for activity, value in operating_activities.items():
+        ws.append([activity, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    # Add investing activities
+    ws.append(["Investing Activities" if language != 'i' else "Aktivitas Investasi"])
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    for activity, value in investing_activities.items():
+        ws.append([activity, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    # Add financing activities
+    ws.append(["Financing Activities" if language != 'i' else "Aktivitas Pendanaan"])
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    for activity, value in financing_activities.items():
+        ws.append([activity, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    # Add net cash flow
+    ws.append(["Net Cash Flow" if language != 'i' else "Arus Kas Bersih", net_cash_flow])
+    ws.cell(row=ws.max_row, column=2).number_format = number_format
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 15
+    
+    wb.save(filename)
+
+def export_equity_statement_to_excel(equity_components, total_equity, filename, language):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Statement of Changes in Equity"
+    
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+    number_format = '#,##0.00'
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Add headers
+    headers = ["Component", "Amount"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+    
+    # Add equity components
+    for component, value in equity_components.items():
+        ws.append([component, value])
+        ws.cell(row=ws.max_row, column=2).number_format = number_format
+    
+    # Add total equity
+    ws.append(["Total Equity" if language != 'i' else "Total Ekuitas", total_equity])
+    ws.cell(row=ws.max_row, column=2).number_format = number_format
+    ws.cell(row=ws.max_row, column=1).font = header_font
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 15
+    
+    wb.save(filename)
+
+
 def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, filename, language):
     # Convert summary to a DataFrame if it's not already in the correct format
     summary_df = pd.DataFrame.from_dict(summary['sales'], orient='index', columns=['Total_Sales_Amount'])
@@ -281,7 +633,6 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
 
     # Save the workbook
     wb.save(filename)
-
 
 # Balance Sheet, P&L, Cash Flow, Equity, FS, Financial Analysis
 # Pilihannya 

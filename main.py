@@ -5,8 +5,8 @@ import uuid
 from boto3.dynamodb.conditions import Key, Attr #type: ignore
 import pandas as pd #type: ignore
 import os #type:ignore
-from analyze import analyze_data
-from export import generate_pdf, export_to_excel, generate_bilingual_pdf_report
+from analyze import analyze_financial_data
+import export
 from authenticate import authenticate_user
 from personal import connect_to_personal_database
 from users import register_user
@@ -111,16 +111,72 @@ def fetch_data_for_month(table, category, start_of_month):
     data = pd.DataFrame(response['Items'])
     return data
 
-def generate_reports(transactions, sales, pdf_filename, xsl_filename, report_date, report_type, language_input):
+def generate_reports(transactions, sales, pdf_filename, xsl_filename, report_date, report_type, language_input, report_c):
     initial_capital = 10000.0
-    summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
     
-    if language_input == "i":
-        generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input, report_date, report_type)
-    else:
-        generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
+    if report_c == 1:
+        balance_sheet_data = analyze_financial_data(transactions, sales, initial_capital, report_type == 1)
+        export.generate_balance_sheet_pdf(
+            assets={
+            'Current Assets': balance_sheet_data['current_assets'],
+            'Fixed Assets': balance_sheet_data['fixed_assets']
+            },
+            liabilities={
+            'Current Liabilities': balance_sheet_data['current_liabilities'],
+            'Long-term Liabilities': balance_sheet_data['long_term_liabilities']
+            },
+            equity={
+            'Total Equity': balance_sheet_data['total_equity']
+            },
+            filename='balance_sheet.pdf',
+            language=language_input,
+            report_date=report_date)
+        
+    elif report_c == 2:
+        pnl_data = analyze_financial_data(transactions, sales, initial_capital, report_type == 2)
+        export.generate_pnl_pdf(
+            revenues=pnl_data['revenue'],
+            expenses={
+            'Cost of Goods Sold': pnl_data['cost_of_goods_sold'],
+            'Operating Expenses': pnl_data['operating_expenses']
+            },
+            net_income=pnl_data['net_income'],
+            filename='pnl_statement.pdf',
+            language=language_input,
+            report_date=report_date)
     
-    export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
+    elif report_c == 3:
+        cash_flow_data = analyze_financial_data(transactions, sales, initial_capital, report_type == 3)
+        export.generate_cash_flow_pdf(
+            operating_activities=cash_flow_data['operating_activities'],
+            investing_activities=cash_flow_data['investing_activities'],
+            financing_activities=cash_flow_data['financing_activities'],
+            net_cash_flow=cash_flow_data['net_cash_flow'],
+            beginning_cash=cash_flow_data['beginning_cash'],
+            ending_cash=cash_flow_data['ending_cash'],
+            filename='cash_flow_statement.pdf',
+            language=language_input,
+            report_date=report_date
+        )
+
+    elif report_c == 4:
+        equity_data = analyze_financial_data(transactions, sales, initial_capital, report_type=4)
+
+        export.generate_equity_statement_pdf(
+            equity_components=equity_data,
+            total_equity=equity_data['total_equity'],
+            filename='equity_statement.pdf',
+            language=language_input,
+            report_date=report_date
+        )
+
+    else: 
+        summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_financial_data(transactions, sales, initial_capital, report_c)
+        if language_input == "i":
+            export.generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input, report_date, report_type)
+        else:
+            export.generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
+        export.export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
 
 
 # Unified main function
@@ -186,6 +242,13 @@ def main():
                 print("Invalid input. Please enter 'add' or 'exit'.")
     
     language_input = input("What language? (E for English, I for Indonesian) ").lower()
+    print("\nSelect Report Type: ")
+    print("1. Balance Sheet")
+    print("2. Profit & Loss Statement")
+    print("3. Cash Flow Statement")
+    print("4. Equity Statement")
+    print("5. Financial Report (All)")
+    report_choice = input("Enter your choice (1-6): ")
 
     # # Set a fixed date in 2023 for report generation
     # report_base_date = datetime(2023, 12, 31)
@@ -203,7 +266,7 @@ def main():
         xsl_filename = os.path.join(reports_dir, f"weekly_report_week{week}_{start_of_week.strftime('%Y-%m-%d')}.xlsx")
         
         # Generate reports for this week
-        generate_reports(transactions_weekly, sales_weekly, pdf_filename, xsl_filename, start_of_week, "weekly", language_input)
+        generate_reports(transactions_weekly, sales_weekly, pdf_filename, xsl_filename, start_of_week, "weekly", language_input, report_choice)
     
     # Generate monthly reports
     for month in range(1, 13):
@@ -215,7 +278,7 @@ def main():
         xsl_filename = os.path.join(reports_dir, f"monthly_report_{start_of_month.strftime('%Y-%m')}.xlsx")
         
         # Generate reports for this month
-        generate_reports(transactions_monthly, sales_monthly, pdf_filename, xsl_filename, start_of_month, "monthly", language_input)
+        generate_reports(transactions_monthly, sales_monthly, pdf_filename, xsl_filename, start_of_month, "monthly", language_input, report_choice)
     
     # Generate yearly report
     transactions_yearly = fetch_data_for_year(db_connection_result, "transaction", 2023)
@@ -225,7 +288,7 @@ def main():
     xsl_filename = os.path.join(reports_dir, "yearly_report_2024.xlsx")
     
     # Generate yearly reports
-    generate_reports(transactions_yearly, sales_yearly, pdf_filename, xsl_filename, datetime(2024, 1, 1), "yearly", language_input)
+    generate_reports(transactions_yearly, sales_yearly, pdf_filename, xsl_filename, datetime(2024, 1, 1), "yearly", language_input, report_choice)
 
     print(f"Successfully export all financial reports")
 

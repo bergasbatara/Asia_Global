@@ -52,19 +52,19 @@
 #         total_equity = total_assets - total_liabilities
 
 #         # Create summary dictionary
-#         summary = {
-#             'sales': sales_summary if sales_summary else {'No Data': 0},
-#             'transactions': transaction_summary if transaction_summary else {'No Data': 0},
-#             'total_sales': total_sales,
-#             'total_purchase': total_purchase,
-#             'net_profit': net_profit,
-#             'final_capital': final_capital,
-#             'total_assets': total_assets,
-#             'total_liabilities': total_liabilities,
-#             'total_equity': total_equity
-#         }
+        # summary = {
+        #     'sales': sales_summary if sales_summary else {'No Data': 0},
+        #     'transactions': transaction_summary if transaction_summary else {'No Data': 0},
+        #     'total_sales': total_sales,
+        #     'total_purchase': total_purchase,
+        #     'net_profit': net_profit,
+        #     'final_capital': final_capital,
+        #     'total_assets': total_assets,
+        #     'total_liabilities': total_liabilities,
+        #     'total_equity': total_equity
+        # }
 
-#         return summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity
+        # return summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity
 
 #     except Exception as e:
 #         print(f"Error in analyze_data: {e}")
@@ -124,7 +124,7 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
         total_equity = total_assets - total_liabilities
         
         # Generate report based on type
-        if report_type == "balance_sheet":
+        if report_type == 1: # Balance sheet
             return {
                 'current_assets': final_capital,
                 'fixed_assets': total_assets - final_capital,
@@ -136,7 +136,7 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
                 'total_liabilities_and_equity': total_liabilities + total_equity
             }
             
-        elif report_type == "income_statement":
+        elif report_type == 2: # P&L
             return {
                 'revenue': total_sales,
                 'cost_of_goods_sold': total_purchase,
@@ -146,7 +146,7 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
                 'net_income': net_profit
             }
             
-        elif report_type == "cash_flow":
+        elif report_type == 3: # Cash Flow
             return {
                 'operating_activities': net_profit,
                 'investing_activities': -total_purchase,
@@ -156,7 +156,7 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
                 'ending_cash': final_capital
             }
             
-        elif report_type == "equity":
+        elif report_type == 4: # Equity
             return {
                 'initial_equity': initial_capital - total_liabilities,
                 'net_income': net_profit,
@@ -165,7 +165,7 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
                 'dividends': net_profit * 0.3  # Assuming 30% of profit is distributed
             }
             
-        elif report_type == "financial_statement":
+        elif report_type == 5: # Financial Statement 
             return {
                 'balance_sheet': {
                     'total_assets': total_assets,
@@ -184,17 +184,29 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
             }
             
         else:  # Default financial report
-            return {
-                'sales': sales_summary if sales_summary else {'No Data': 0},
-                'transactions': transaction_summary if transaction_summary else {'No Data': 0},
-                'total_sales': total_sales,
-                'total_purchase': total_purchase,
-                'net_profit': net_profit,
-                'final_capital': final_capital,
-                'total_assets': total_assets,
-                'total_liabilities': total_liabilities,
-                'total_equity': total_equity
-            }
+            summary = {
+            'sales': sales_summary if sales_summary else {'No Data': 0},
+            'transactions': transaction_summary if transaction_summary else {'No Data': 0},
+            'total_sales': total_sales,
+            'total_purchase': total_purchase,
+            'net_profit': net_profit,
+            'final_capital': final_capital,
+            'total_assets': total_assets,
+            'total_liabilities': total_liabilities,
+            'total_equity': total_equity
+        }
+            return summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity
+            # return {
+            #     'sales': sales_summary if sales_summary else {'No Data': 0},
+            #     'transactions': transaction_summary if transaction_summary else {'No Data': 0},
+            #     'total_sales': total_sales,
+            #     'total_purchase': total_purchase,
+            #     'net_profit': net_profit,
+            #     'final_capital': final_capital,
+            #     'total_assets': total_assets,
+            #     'total_liabilities': total_liabilities,
+            #     'total_equity': total_equity
+            # }
 
     except Exception as e:
         print(f"Error in analyze_financial_data: {e}")
