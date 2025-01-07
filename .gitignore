@@ -6,3 +6,6 @@
 
 # Ignore pycache folder
 __pycache__/
+
+# Ignore financial_reports_ folder
+financial_reports_*/

@@ -4,6 +4,7 @@ from decimal import Decimal
 import uuid
 from boto3.dynamodb.conditions import Key, Attr #type: ignore
 import pandas as pd #type: ignore
+import os #type:ignore
 from analyze import analyze_data
 from export import generate_pdf, export_to_excel, generate_bilingual_pdf_report
 from authenticate import authenticate_user
@@ -53,20 +54,43 @@ def fetch_data_for_week(table, category, start_of_week):
     data = pd.DataFrame(response['Items'])
     return data
 
-# Function to fetch data for the entire year
+# # Function to fetch data for the entire year
+# def fetch_data_for_year(table, category, year):
+#     all_data = pd.DataFrame()
+
+#     # Make sure the year is passed correctly as an integer
+#     start_of_year = datetime(year, 1, 1)
+
+#     # Loop through all 52 weeks of the year
+#     for week_num in range(52):
+#         start_of_week = datetime(year, 1, 1) + timedelta(weeks=week_num)
+#         weekly_data = fetch_data_for_week(table, category, start_of_week)
+#         all_data = pd.concat([all_data, weekly_data], ignore_index=True)
+
+#     return all_data
+
 def fetch_data_for_year(table, category, year):
-    all_data = pd.DataFrame()
+    start_date = f"{year}-01-01"
+    end_date = f"{year}-12-31"
+    
+    response = table.scan(
+        FilterExpression=Attr('Date').between(start_date, end_date) & 
+                        Attr('Category').eq(category)
+    )
+    
+    data = pd.DataFrame(response.get('Items', []))
+    
+    # Handle pagination if data exceeds 1MB
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression=Attr('Date').between(start_date, end_date) & 
+                            Attr('Category').eq(category),
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+        data = pd.concat([data, pd.DataFrame(response.get('Items', []))], 
+                        ignore_index=True)
+    return data
 
-    # Make sure the year is passed correctly as an integer
-    start_of_year = datetime(year, 1, 1)
-
-    # Loop through all 52 weeks of the year
-    for week_num in range(52):
-        start_of_week = datetime(year, 1, 1) + timedelta(weeks=week_num)
-        weekly_data = fetch_data_for_week(table, category, start_of_week)
-        all_data = pd.concat([all_data, weekly_data], ignore_index=True)
-
-    return all_data
 
 # Function to fetch data for a specific month
 def fetch_data_for_month(table, category, start_of_month):
@@ -86,6 +110,18 @@ def fetch_data_for_month(table, category, start_of_month):
     
     data = pd.DataFrame(response['Items'])
     return data
+
+def generate_reports(transactions, sales, pdf_filename, xsl_filename, report_date, report_type, language_input):
+    initial_capital = 10000.0
+    summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
+    
+    if language_input == "i":
+        generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input, report_date, report_type)
+    else:
+        generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
+    
+    export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
+
 
 # Unified main function
 def main():
@@ -148,62 +184,50 @@ def main():
                 add_data_to_db(db_connection_result, date, time, product_id, quantity, price, category)
             else:
                 print("Invalid input. Please enter 'add' or 'exit'.")
-        
-    choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)? ").lower()
-
+    
     language_input = input("What language? (E for English, I for Indonesian) ").lower()
 
-    # Determine report date and type
-    if choice_weekly_yearly == 'weekly':
-        start_of_week_str = input("Enter the start date for the week to report on (YYYY-MM-DD): ")
-        report_date = datetime.strptime(start_of_week_str, '%Y-%m-%d')
-        report_type = 'weekly'
-    elif choice_weekly_yearly == 'monthly':
-        year = int(input("Enter the year for the report: "))
-        month = int(input("Enter the month (1-12) for the report: "))
-        report_date = datetime(year, month, 1)
-        report_type = 'monthly'
-    elif choice_weekly_yearly == 'yearly':
-        year = int(input("Enter the year for the report: "))
-        report_date = datetime(year, 1, 1)
-        report_type = 'yearly'
-    else:
-        print("Invalid choice. Exiting.")
-        return
+    # # Set a fixed date in 2023 for report generation
+    # report_base_date = datetime(2023, 12, 31)
+    # Create reports directory
+    reports_dir = f"financial_reports_{datetime.now().strftime('%Y%m%d')}"
+    os.makedirs(reports_dir, exist_ok=True)
+    
+    # Generate weekly reports for entire year
+    for week in range(1, 53):
+        start_of_week = datetime(2023, 1, 1) + timedelta(weeks=week-1)
+        transactions_weekly = fetch_data_for_week(db_connection_result, "transaction", start_of_week)
+        sales_weekly = fetch_data_for_week(db_connection_result, "sales", start_of_week)
+        
+        pdf_filename = os.path.join(reports_dir, f"weekly_report_week{week}_{start_of_week.strftime('%Y-%m-%d')}.pdf")
+        xsl_filename = os.path.join(reports_dir, f"weekly_report_week{week}_{start_of_week.strftime('%Y-%m-%d')}.xlsx")
+        
+        # Generate reports for this week
+        generate_reports(transactions_weekly, sales_weekly, pdf_filename, xsl_filename, start_of_week, "weekly", language_input)
+    
+    # Generate monthly reports
+    for month in range(1, 13):
+        start_of_month = datetime(2023, month, 1)
+        transactions_monthly = fetch_data_for_month(db_connection_result, "transaction", start_of_month)
+        sales_monthly = fetch_data_for_month(db_connection_result, "sales", start_of_month)
+        
+        pdf_filename = os.path.join(reports_dir, f"monthly_report_{start_of_month.strftime('%Y-%m')}.pdf")
+        xsl_filename = os.path.join(reports_dir, f"monthly_report_{start_of_month.strftime('%Y-%m')}.xlsx")
+        
+        # Generate reports for this month
+        generate_reports(transactions_monthly, sales_monthly, pdf_filename, xsl_filename, start_of_month, "monthly", language_input)
+    
+    # Generate yearly report
+    transactions_yearly = fetch_data_for_year(db_connection_result, "transaction", 2023)
+    sales_yearly = fetch_data_for_year(db_connection_result, "sales", 2023)
+    
+    pdf_filename = os.path.join(reports_dir, "yearly_report_2024.pdf")
+    xsl_filename = os.path.join(reports_dir, "yearly_report_2024.xlsx")
+    
+    # Generate yearly reports
+    generate_reports(transactions_yearly, sales_yearly, pdf_filename, xsl_filename, datetime(2024, 1, 1), "yearly", language_input)
 
-    # Fetch data based on report type
-    if report_type == 'weekly':
-        transactions = fetch_data_for_week(db_connection_result, "transaction", report_date)
-        sales = fetch_data_for_week(db_connection_result, "sales", report_date)
-        pdf_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.pdf"
-        xsl_filename = f"weekly_financial_report_{report_date.strftime('%Y-%m-%d')}.xlsx"
-    elif report_type == 'monthly':
-        transactions = fetch_data_for_month(db_connection_result, "transaction", report_date)
-        sales = fetch_data_for_month(db_connection_result, "sales", report_date)
-        pdf_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.pdf"
-        xsl_filename = f"monthly_financial_report_{report_date.strftime('%Y-%m')}.xlsx"
-    elif report_type == 'yearly':
-        transactions = fetch_data_for_year(db_connection_result, "transaction", report_date.year)
-        sales = fetch_data_for_year(db_connection_result, "sales", report_date.year)
-        pdf_filename = f"yearly_financial_report_{report_date.year}.pdf"
-        xsl_filename = f"yearly_financial_report_{report_date.year}.xlsx"
-
-    initial_capital = 10000.0
-
-    summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity = analyze_data(transactions, sales, initial_capital)
-
-    if language_input == "i":
-        # Generate the PDF report
-        generate_pdf(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, pdf_filename, language_input, report_date, report_type)
-        print(f"PDF report has been saved to {pdf_filename}")
-    else: 
-        generate_bilingual_pdf_report(pdf_filename, summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, report_date)
-        print(f"PDF report has been saved to {pdf_filename}")
-
-    # Export to Excel
-    export_to_excel(summary, total_sales, total_purchase, net_profit, final_capital, total_assets, total_liabilities, total_equity, xsl_filename, language_input)
-    print(f"Excel report has been saved to {xsl_filename}")
-
+    print(f"Successfully export all financial reports")
 
 if __name__ == "__main__":
     main()
