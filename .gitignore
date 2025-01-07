@@ -4,5 +4,5 @@
 # Ignore all .xslx files
 *.xlsx
 
-#Ignore pycache folder
+# Ignore pycache folder
 __pycache__/
