@@ -7,21 +7,30 @@ dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Replace '
 users_table = dynamodb.Table('Central_DB')  # Replace with the actual name of your DynamoDB table
 
 def authenticate_user(username, password):
+    # Fetch the user record from DynamoDB
     try:
-        # Fetch the user record from the DynamoDB table
         response = users_table.get_item(Key={'Username': username})
         user = response.get('Item')
         
-        # If the user exists, verify the password
         if user and bcrypt.checkpw(password.encode('utf-8'), user['PasswordHash'].encode('utf-8')):
-            print("Authentication successful.")
-            return user['DatabaseName']  # Return the associated database name for further use
+            # Authentication successful
+            return {
+                'status': 'success',
+                'message': 'Authentication successful.',
+                'database_name': user['DatabaseName']  # Assuming 'DatabaseName' is stored for each user
+            }
         else:
-            print("Authentication failed.")
-            return None
+            # Authentication failed
+            return {
+                'status': 'failure',
+                'message': 'Invalid username or password.'
+            }
     except ClientError as e:
-        print("Error authenticating user:", e)
-        return None
+        # Handle DynamoDB error
+        return {
+            'status': 'failure',
+            'message': f"Error accessing database: {e}"
+        }
     
 # # Example usage
 # db_name = authenticate_user("test_user", "secure_password123")

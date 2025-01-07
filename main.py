@@ -29,6 +29,9 @@ def add_data_to_db(table, date, time, product_id, quantity, price, category):
         'Category': category
     }
 
+    # Check the table type for debugging
+    # print("Type of table:", type(table))
+
     # Put the item into the table
     try:
         table.put_item(Item=new_data)
@@ -100,59 +103,52 @@ def main():
         
         if registration_result['status'] == 'success':
             print(registration_result['message'])
-            # You can proceed to login directly if needed
-        elif registration_result['status'] == 'partial_success':
-            print(registration_result['message'])
-            # Partial success indicates user registration succeeded, but database creation failed
         else:
-            print(registration_result['message'])
-            # Registration failed; exit or retry as needed
+            print(f"Registration failed: {registration_result['message']}")
 
     elif option == 'l':
-        # Login flow
-        username = input("Enter your username for login: ")
-        password = input("Enter your password for login: ")
-        
-        # Call the authenticate_user function
-        auth_result = authenticate_user(username, password)
-        
-        if auth_result['status'] == 'success':
-            print("Authentication successful.")
+    # Login flow
+        while True:
+            username = input("Enter your username for login: ")
+            password = input("Enter your password for login: ")
             
-            # Connect to the user's personal database
-            personal_db_name = auth_result['database_name']
-            db_connection_result = connect_to_personal_database(personal_db_name)
+            # Call the authenticate_user function
+            auth_result = authenticate_user(username, password)
             
-            if db_connection_result:
-                print(f"Connected to {personal_db_name} successfully.")
-                # Run the application features after successful login and connection
+            if auth_result['status'] == 'success':
+                print("Authentication successful.")
+                # Connect to the user's personal database
+                personal_db_name = auth_result['database_name']
+                db_connection_result = connect_to_personal_database(personal_db_name)
+                
+                if db_connection_result:
+                    print(f"Connected to {personal_db_name} successfully.")
+                    break  # Exit the login loop after successful authentication
+                else:
+                    print("Failed to connect to a valid personal database.")
+                    return  # Exit the function if database connection fails
             else:
-                print("Failed to connect to the personal database.")
-        else:
-            print(auth_result['message'])  # Display authentication failure message
-
-    else:
-        print("Invalid option. Please enter 'L' to login or 'R' to register.")
-
-    while True:
-        # Ask if the user wants to add new data or exit
-        action = input("Do you want to add data or type 'exit' to stop? (add/exit): ").lower()
-
-        if action == 'exit':
-            break
-
-        # Add new data
-        date = input("Enter Date (YYYY-MM-DD): ")
-        time = input("Enter Time (HH:MM): ")
-        product_id = int(input("Enter Product ID: "))
-        quantity = float(input("Enter Quantity: "))
-        price = float(input("Enter Price: "))
-        category = input("Enter Category (transaction/sales): ").lower()
-
-        # Add the data to DynamoDB
-        add_data_to_db(db_connection_result, date, time, product_id, quantity, price, category)
-
-    # Choosing between 
+                print(auth_result['message'])  # Display authentication failure message
+        
+        # Data addition loop
+        while True:
+            add_data = input("Do you want to add data or type 'exit' to stop? (add/exit): ").lower()
+            if add_data == "exit":
+                break  # Exit the data addition loop
+            elif add_data == "add":
+                # Collect data from the user
+                date = input("Enter Date (YYYY-MM-DD): ")
+                time = input("Enter Time (HH:MM): ")
+                product_id = input("Enter Product ID: ")
+                quantity = input("Enter Quantity: ")
+                price = input("Enter Price: ")
+                category = input("Enter Category (transaction/sales): ")
+                
+                # Call add_data_to_db function with valid db_connection_result
+                add_data_to_db(db_connection_result, date, time, product_id, quantity, price, category)
+            else:
+                print("Invalid input. Please enter 'add' or 'exit'.")
+        
     choice_weekly_yearly = input("Do you want weekly or yearly report (Weekly/Monthly/Yearly)? ").lower()
 
     language_input = input("What language? (E for English, I for Indonesian) ").lower()
@@ -211,3 +207,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# No option for weekly, monthly and yearly
+# Transaction system (QRIS, Debit, Credit)

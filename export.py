@@ -282,5 +282,6 @@ def export_to_excel(summary, total_sales, total_purchase, net_profit, final_capi
     # Save the workbook
     wb.save(filename)
 
-    
 
+# Balance Sheet, P&L, Cash Flow, Equity, FS, Financial Analysis
+# Pilihannya 

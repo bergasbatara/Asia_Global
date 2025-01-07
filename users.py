@@ -41,7 +41,6 @@ def register_user(username, password):
     # Hash the password
     password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
-    # Check if the username already exists
     try:
         # Add the user to the central database
         users_table.put_item(
@@ -56,14 +55,24 @@ def register_user(username, password):
         # Create a personal database for the user
         personal_db_name = create_personal_database_table(username)
         if personal_db_name:
-            print("User registered and personal database created successfully.")
+            return {
+                'status': 'success',
+                'message': f"User registered and personal database '{personal_db_name}' created successfully."
+            }
         else:
-            print("User registered, but there was an issue creating the personal database.")
+            return {
+                'status': 'failure',
+                'message': "User registered, but there was an issue creating the personal database."
+            }
     except ClientError as e:
         if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            print("Username already exists.")
+            return {
+                'status': 'failure',
+                'message': "Username already exists."
+            }
         else:
-            print("Error registering user:", e)
+            return {
+                'status': 'failure',
+                'message': f"Error registering user: {e}"
+            }
 
-# Example usage
-register_user("new_user", "password123")

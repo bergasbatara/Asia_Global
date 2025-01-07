@@ -1,5 +1,5 @@
 import boto3 #type: ignore
-from authenticate import authenticate_user
+from botocore.exceptions import ClientError #type: ignore
 
 # Initialize DynamoDB (you can reuse the same resource from earlier)
 dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-3')  # Replace 'your-region' with your AWS region
@@ -20,11 +20,11 @@ def connect_to_personal_database(database_name):
         
         # Perform a simple check to see if the table exists
         personal_db.load()  # This will raise an exception if the table does not exist
-        print(f"Connected to {database_name} successfully.")
+        
         return personal_db
-    except Exception as e:
+    except ClientError as e:
         print(f"Error connecting to {database_name}: {e}")
-        return None
+        return None  # Return None if there’s an error
 
 # # First, authenticate the user
 # db_name = authenticate_user("test_user", "secure_password123")
