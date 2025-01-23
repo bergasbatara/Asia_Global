@@ -117,20 +117,17 @@ def generate_reports(transactions, sales, pdf_filename, xsl_filename, report_dat
     if report_c == 1:
         balance_sheet_data = analyze_financial_data(transactions, sales, initial_capital, report_type == 1)
         export.generate_balance_sheet_pdf(
-            assets={
-            'Current Assets': balance_sheet_data['current_assets'],
-            'Fixed Assets': balance_sheet_data['fixed_assets']
-            },
-            liabilities={
-            'Current Liabilities': balance_sheet_data['current_liabilities'],
-            'Long-term Liabilities': balance_sheet_data['long_term_liabilities']
-            },
-            equity={
-            'Total Equity': balance_sheet_data['total_equity']
-            },
-            filename='balance_sheet.pdf',
+            balance_sheet_data=balance_sheet_data,
+            filename=pdf_filename,
             language=language_input,
-            report_date=report_date)
+            report_date=report_date
+        )
+        export.export_balance_sheet_to_excel(
+            balance_sheet_data=balance_sheet_data,
+            filename=xsl_filename,
+            language=language_input,
+            report_date=report_date
+        )
         
     elif report_c == 2:
         pnl_data = analyze_financial_data(transactions, sales, initial_capital, report_type == 2)

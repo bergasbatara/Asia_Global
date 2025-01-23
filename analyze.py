@@ -124,16 +124,49 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
         total_equity = total_assets - total_liabilities
         
         # Generate report based on type
-        if report_type == 1: # Balance sheet
+        if report_type == 1:  # Balance sheet
+        # Current Assets
+            cash = final_capital * 0.4  # Assuming 40% of final capital is cash
+            accounts_receivable = final_capital * 0.3  # Assuming 30% is accounts receivable
+            inventory = final_capital * 0.3  # Assuming 30% is inventory
+            current_assets = cash + accounts_receivable + inventory
+
+            # Fixed Assets (assuming 20% of total assets are fixed)
+            fixed_assets = total_assets * 0.2
+            total_assets = current_assets + fixed_assets
+
+            # Liabilities
+            current_liabilities = total_liabilities * 0.4  # Assuming 40% are current
+            long_term_liabilities = total_liabilities * 0.6  # Assuming 60% are long-term
+
+            # Equity
+            owner_capital = initial_capital
+            retained_earnings = total_equity - owner_capital
+
             return {
-                'current_assets': final_capital,
-                'fixed_assets': total_assets - final_capital,
-                'total_assets': total_assets,
-                'current_liabilities': total_liabilities * 0.3,  # Assuming 30% are current
-                'long_term_liabilities': total_liabilities * 0.7,  # Assuming 70% are long-term
-                'total_liabilities': total_liabilities,
-                'total_equity': total_equity,
-                'total_liabilities_and_equity': total_liabilities + total_equity
+                'assets': {
+                    'Current Assets': {
+                        'Cash': cash,
+                        'Accounts Receivable': accounts_receivable,
+                        'Inventory': inventory,
+                        'Total Current Assets': current_assets
+                    },
+                    'Fixed Assets': fixed_assets,
+                    'Total Assets': total_assets
+                },
+                'liabilities_and_equity': {
+                    'Liabilities': {
+                        'Current Liabilities': current_liabilities,
+                        'Long-term Liabilities': long_term_liabilities,
+                        'Total Liabilities': total_liabilities
+                    },
+                    'Equity': {
+                        'Owner\'s Capital': owner_capital,
+                        'Retained Earnings': retained_earnings,
+                        'Total Equity': total_equity
+                    },
+                    'Total Liabilities and Equity': total_liabilities + total_equity
+                }
             }
             
         elif report_type == 2: # P&L
@@ -165,23 +198,23 @@ def analyze_financial_data(transactions, sales, initial_capital, report_type):
                 'dividends': net_profit * 0.3  # Assuming 30% of profit is distributed
             }
             
-        elif report_type == 5: # Financial Statement 
-            return {
-                'balance_sheet': {
-                    'total_assets': total_assets,
-                    'total_liabilities': total_liabilities,
-                    'total_equity': total_equity
-                },
-                'income_statement': {
-                    'total_revenue': total_sales,
-                    'total_expenses': total_purchase,
-                    'net_income': net_profit
-                },
-                'cash_flow': {
-                    'net_cash_flow': final_capital - initial_capital,
-                    'ending_cash': final_capital
-                }
-            }
+        # elif report_type == 5: # Financial Statement 
+        #     return {
+        #         'balance_sheet': {
+        #             'total_assets': total_assets,
+        #             'total_liabilities': total_liabilities,
+        #             'total_equity': total_equity
+        #         },
+        #         'income_statement': {
+        #             'total_revenue': total_sales,
+        #             'total_expenses': total_purchase,
+        #             'net_income': net_profit
+        #         },
+        #         'cash_flow': {
+        #             'net_cash_flow': final_capital - initial_capital,
+        #             'ending_cash': final_capital
+        #         }
+        #     }
             
         else:  # Default financial report
             summary = {

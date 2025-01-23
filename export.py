@@ -32,7 +32,7 @@ class PDFReport:
         # Build the document with footer on each page
         self.doc.build(self.elements, onFirstPage=self.add_footer, onLaterPages=self.add_footer)
 
-def generate_balance_sheet_pdf(assets, liabilities, equity, filename, language):
+def generate_balance_sheet_pdf(balance_sheet_data, filename, language, report_date):
     pdf = PDFReport(filename)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(name='Title', fontSize=16, alignment=1, spaceAfter=20, fontName='Helvetica-Bold')
@@ -40,22 +40,72 @@ def generate_balance_sheet_pdf(assets, liabilities, equity, filename, language):
     title = "Balance Sheet" if language != 'i' else "Neraca"
     pdf.elements.append(Paragraph(title, title_style))
     
-    data = [["Assets" if language != 'i' else "Aset", "Liabilities & Equity" if language != 'i' else "Kewajiban & Ekuitas"]]
+    # Add report date
+    date_text = f"As of: {report_date.strftime('%d %B %Y')}" if language != 'i' else f"Per tanggal: {report_date.strftime('%d %B %Y')}"
+    pdf.elements.append(Paragraph(date_text, styles['Normal']))
+    pdf.elements.append(Spacer(1, 12))
     
-    for asset, value in assets.items():
-        data.append([f"{asset}: Rp {value:,.2f}", ""])
+    # # Assets
+    # data.append(["Assets" if language != 'i' else "Aset", ""])
+    # for asset, value in balance_sheet_data['assets'].items():
+    #     data.append([f"  {asset}", f"Rp {value:,.2f}"])
     
-    for liability, value in liabilities.items():
-        data.append(["", f"{liability}: Rp {value:,.2f}"])
+    # # Liabilities
+    # data.append(["Liabilities" if language != 'i' else "Kewajiban", ""])
+    # for liability, value in balance_sheet_data['liabilities'].items():
+    #     data.append([f"  {liability}", f"Rp {value:,.2f}"])
     
-    for equity_item, value in equity.items():
-        data.append(["", f"{equity_item}: Rp {value:,.2f}"])
+    # # Equity
+    # data.append(["Equity" if language != 'i' else "Ekuitas", ""])
+    # for equity_item, value in balance_sheet_data['equity'].items():
+    #     data.append([f"  {equity_item}", f"Rp {value:,.2f}"])
     
-    table = Table(data, colWidths=[250, 250])
+    # # Total Liabilities and Equity
+    # data.append(["Total Liabilities and Equity" if language != 'i' else "Total Kewajiban dan Ekuitas", 
+    #              f"Rp {balance_sheet_data['total_liabilities_and_equity']:,.2f}"])
+    
+    # for section, items in balance_sheet_data.items():
+    #     if section != 'total_liabilities_and_equity':
+    #         section_title = section.capitalize() if language != 'i' else section.capitalize().translate(str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "ABCDEFGHIJKLMNOPQRSTUVWXYZ".lower()))
+    #         data.append([section_title, ""])
+    #         for item, value in items.items():
+    #             if isinstance(value, dict):
+    #                 for sub_item, sub_value in value.items():
+    #                     data.append([f"  {sub_item}", f"Rp {sub_value:,.2f}"])
+    #             else:
+    #                 data.append([f"  {item}", f"Rp {value:,.2f}"])
+
+    # data.append(["Total Liabilities and Equity" if language != 'i' else "Total Kewajiban dan Ekuitas", 
+    #              f"Rp {balance_sheet_data['total_liabilities_and_equity']:,.2f}"])
+
+    data = []
+    
+    # Assets
+    data.append(["Assets" if language != 'i' else "Aset", ""])
+    for asset_type, asset_values in balance_sheet_data['assets'].items():
+        if isinstance(asset_values, dict):
+            data.append([f"  {asset_type}", ""])
+            for sub_item, sub_value in asset_values.items():
+                data.append([f"    {sub_item}", f"Rp {sub_value:,.2f}"])
+        else:
+            data.append([f"  {asset_type}", f"Rp {asset_values:,.2f}"])
+    
+    # Liabilities and Equity
+    data.append(["Liabilities and Equity" if language != 'i' else "Kewajiban dan Ekuitas", ""])
+    for section, items in balance_sheet_data['liabilities_and_equity'].items():
+        if isinstance(items, dict):
+            data.append([f"  {section}", ""])
+            for sub_item, sub_value in items.items():
+                data.append([f"    {sub_item}", f"Rp {sub_value:,.2f}"])
+        else:
+            data.append([f"  {section}", f"Rp {items:,.2f}"])
+    
+    table = Table(data, colWidths=[300, 200])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
@@ -339,7 +389,7 @@ def generate_bilingual_pdf_report(filename, summary, total_sales, total_purchase
     # Build PDF with footer
     pdf.build_pdf()
 
-def export_balance_sheet_to_excel(assets, liabilities, equity, filename, language):
+def export_balance_sheet_to_excel(balance_sheet_data, filename, language, report_date):
     wb = Workbook()
     ws = wb.active
     ws.title = "Balance Sheet"
@@ -349,46 +399,66 @@ def export_balance_sheet_to_excel(assets, liabilities, equity, filename, languag
     number_format = '#,##0.00'
     border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     
-    # Add headers
-    headers = ["Assets" if language != 'i' else "Aset", "Liabilities & Equity" if language != 'i' else "Kewajiban & Ekuitas"]
-    ws.append(headers)
-    for cell in ws[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.border = border
+    # Add title and date
+    ws['A1'] = "Balance Sheet" if language != 'i' else "Neraca"
+    ws['A2'] = f"As of: {report_date.strftime('%d %B %Y')}" if language != 'i' else f"Per tanggal: {report_date.strftime('%d %B %Y')}"
+    ws['A1'].font = header_font
+    ws['A2'].font = Font(italic=True)
     
     # Add data
-    row = 2
-    for asset, value in assets.items():
-        ws.cell(row=row, column=1, value=asset)
-        ws.cell(row=row, column=2, value=value).number_format = number_format
-        row += 1
+    row = 4
     
-    row = 2
-    for liability, value in liabilities.items():
-        ws.cell(row=row, column=3, value=liability)
-        ws.cell(row=row, column=4, value=value).number_format = number_format
-        row += 1
+    # Assets
+    ws.cell(row=row, column=1, value="Assets" if language != 'i' else "Aset")
+    ws.cell(row=row, column=1).font = header_font
+    row += 1
     
-    for equity_item, value in equity.items():
-        ws.cell(row=row, column=3, value=equity_item)
-        ws.cell(row=row, column=4, value=value).number_format = number_format
-        row += 1
+    for asset_type, asset_values in balance_sheet_data['assets'].items():
+        if isinstance(asset_values, dict):
+            ws.cell(row=row, column=1, value=asset_type)
+            ws.cell(row=row, column=1).font = Font(bold=True)
+            row += 1
+            for sub_item, sub_value in asset_values.items():
+                ws.cell(row=row, column=1, value=sub_item)
+                ws.cell(row=row, column=2, value=sub_value).number_format = number_format
+                row += 1
+        else:
+            ws.cell(row=row, column=1, value=asset_type)
+            ws.cell(row=row, column=2, value=asset_values).number_format = number_format
+            row += 1
+    
+    row += 1  # Add a blank row for separation
+    
+    # Liabilities and Equity
+    ws.cell(row=row, column=1, value="Liabilities and Equity" if language != 'i' else "Kewajiban dan Ekuitas")
+    ws.cell(row=row, column=1).font = header_font
+    row += 1
+    
+    for section, items in balance_sheet_data['liabilities_and_equity'].items():
+        if isinstance(items, dict):
+            ws.cell(row=row, column=1, value=section)
+            ws.cell(row=row, column=1).font = Font(bold=True)
+            row += 1
+            for sub_item, sub_value in items.items():
+                ws.cell(row=row, column=1, value=sub_item)
+                ws.cell(row=row, column=2, value=sub_value).number_format = number_format
+                row += 1
+        else:
+            ws.cell(row=row, column=1, value=section)
+            ws.cell(row=row, column=2, value=items).number_format = number_format
+            row += 1
+    
+    # Apply styles
+    for row in ws[f'A4:B{ws.max_row}']:
+        for cell in row:
+            cell.border = border
     
     # Set column widths
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2)
-        ws.column_dimensions[column].width = adjusted_width
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 15
     
     wb.save(filename)
+
 
 def export_pnl_to_excel(revenues, expenses, net_income, filename, language):
     wb = Workbook()
